@@ -17,6 +17,12 @@ dashboard; de startpagina is alleen een inlogscherm.
   Elk woord moet ergens raak zijn, dus je maakt een zoekopdracht scherper door
   door te typen.
 - **Lijsten** - eigen lijsten met kleur; taken zonder lijst staan in de inbox.
+  Achter elke lijst in de zijbalk (en naast de titel van de lijstpagina) zitten
+  drie puntjes: bewerken, omhoog, omlaag, archiveren en verwijderen.
+- **Archief** - een lijst die je opbergt verdwijnt uit de zijbalk en zijn taken
+  tellen nergens meer mee: niet in Vandaag, niet in de aantallen, niet in
+  zoeken. Hij blijft wel bestaan en staat onderaan de zijbalk onder *Archief*,
+  met één klik terug te halen. Weggooien is definitief, opbergen niet.
 - **Labels** - dwars door lijsten heen filteren.
 - **Taken** - omschrijving, datum, prioriteit (1-4), subtaken en labels.
 
@@ -132,8 +138,11 @@ draaien.
 ## Eenmalig instellen
 
 1. **Supabase-project** aanmaken (regio West EU).
-2. **Schema** draaien: de inhoud van `supabase/migrations/0001_init.sql` in de
-   SQL-editor plakken en uitvoeren.
+2. **Schema** draaien: de bestanden in `supabase/migrations/` op volgorde in de
+   SQL-editor plakken en uitvoeren. Bij een bestaand project alleen de nieuwe;
+   `0002_archiveren.sql` voegt de kolom toe die het archiveren van lijsten
+   mogelijk maakt. Zolang die migratie niet gedraaid is, werkt de rest van de
+   app gewoon en zegt alleen het archiveren dat het nog niet kan.
 3. **Registratie uitzetten**: Authentication -> Sign In / Providers ->
    "Allow new users to sign up" uit.
 4. **Account aanmaken**: Authentication -> Users -> Add user, met

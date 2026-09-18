@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Navigate, useParams, useNavigate } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import { useTaken } from '../data/TakenProvider'
 import { Paginakop, useSchil } from '../components/Layout'
 import { Sectie, TakenLijst } from '../components/TakenLijst'
 import { Taakweergave } from '../components/Taakweergave'
 import { Weergavekiezer } from '../components/Weergavekiezer'
+import { Lijstmenu } from '../components/Lijstmenu'
+import { LijstDialoog } from '../components/LijstDialoog'
 import { opDatumGroeperen, type Groep } from '../lib/groepen'
 import { sorteerTaken } from '../lib/sorteren'
 import { paginaKlassen, useWeergave } from '../lib/weergave'
@@ -13,14 +15,18 @@ type Soort = 'inbox' | 'klaar' | 'lijst' | 'label'
 
 export function Filterpagina({ soort }: { soort: Soort }) {
   const { id } = useParams()
-  const navigeer = useNavigate()
-  const { taken, lijsten, labels, lijstBijwerken, lijstVerwijderen, labelVerwijderen } = useTaken()
+  const { taken, alleTaken, lijsten, gearchiveerdeLijsten, labels } = useTaken()
   const { bewerk, nieuweTaak } = useSchil()
-  const [hernoemen, setHernoemen] = useState(false)
-  const [nieuweNaam, setNieuweNaam] = useState('')
+  const [bewerkOpen, setBewerkOpen] = useState(false)
   const [weergave, kiesWeergave] = useWeergave(`${soort}:${id ?? ''}`)
 
-  const lijst = soort === 'lijst' ? lijsten.find((l) => l.id === id) : undefined
+  // Een gearchiveerde lijst is nog gewoon te openen; alleen telt hij nergens
+  // meer mee. Zijn taken zitten dus niet in `taken` maar in `alleTaken`.
+  const lijst =
+    soort === 'lijst'
+      ? (lijsten.find((l) => l.id === id) ?? gearchiveerdeLijsten.find((l) => l.id === id))
+      : undefined
+  const opgeborgen = Boolean(lijst?.archived_at)
   const label = soort === 'label' ? labels.find((l) => l.id === id) : undefined
 
   // Verwijderd of een verkeerde link: terug naar Vandaag in plaats van een
@@ -29,7 +35,8 @@ export function Filterpagina({ soort }: { soort: Soort }) {
     return <Navigate to="/" replace />
   }
 
-  const open = taken.filter((t) => !t.completed_at)
+  const bron = opgeborgen ? alleTaken : taken
+  const open = bron.filter((t) => !t.completed_at)
   const gefilterd = sorteerTaken(
     soort === 'inbox'
       ? open.filter((t) => t.list_id === null)
@@ -40,7 +47,7 @@ export function Filterpagina({ soort }: { soort: Soort }) {
           : [],
   )
 
-  const afgerond = taken
+  const afgerond = bron
     .filter((t) => t.completed_at !== null)
     .filter((t) =>
       soort === 'lijst' ? t.list_id === id : soort === 'label' ? t.labelIds.includes(id!) : true,
@@ -62,7 +69,9 @@ export function Filterpagina({ soort }: { soort: Soort }) {
       : soort === 'klaar'
         ? 'Alles wat je hebt afgevinkt, nieuwste eerst.'
         : soort === 'lijst'
-          ? `${gefilterd.length} openstaand`
+          ? opgeborgen
+            ? 'Gearchiveerd - deze taken tellen nergens mee.'
+            : `${gefilterd.length} openstaand`
           : 'Alle taken met dit label.'
 
   // In de lijst blijft het één doorlopende reeks, zoals het altijd was. Op het
@@ -81,80 +90,24 @@ export function Filterpagina({ soort }: { soort: Soort }) {
         ]
       : opDatumGroeperen(gefilterd)
 
-  async function naamOpslaan(e: React.FormEvent) {
-    e.preventDefault()
-    if (nieuweNaam.trim() && lijst) await lijstBijwerken(lijst.id, { name: nieuweNaam.trim() })
-    setHernoemen(false)
-  }
-
-  async function verwijderen() {
-    if (lijst) {
-      const zeker = window.confirm(
-        `Lijst "${lijst.name}" verwijderen? De taken blijven bestaan en komen in de inbox.`,
-      )
-      if (!zeker) return
-      await lijstVerwijderen(lijst.id)
-    }
-    if (label) {
-      const zeker = window.confirm(`Label "${label.name}" verwijderen?`)
-      if (!zeker) return
-      await labelVerwijderen(label.id)
-    }
-    navigeer('/', { replace: true })
-  }
-
   return (
     <div className={paginaKlassen(weergave)}>
-      {hernoemen && lijst ? (
-        <form onSubmit={naamOpslaan} className="mb-6">
-          <input
-            autoFocus
-            defaultValue={lijst.name}
-            onChange={(e) => setNieuweNaam(e.target.value)}
-            onBlur={() => setHernoemen(false)}
-            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-xl font-semibold outline-none focus:border-brand"
-          />
-        </form>
-      ) : (
-        <Paginakop
-          titel={titel}
-          onderschrift={onderschrift}
-          kleur={lijst?.color ?? label?.color}
-          actie={
-            <div className="flex flex-wrap items-center gap-2">
-              {soort !== 'klaar' && (
-                <button
-                  onClick={() => nieuweTaak({ lijstId: soort === 'lijst' ? id : null })}
-                  className="rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium transition hover:border-brand hover:text-brand"
-                >
-                  + Nieuwe taak
-                </button>
-              )}
-              {soort !== 'klaar' && (
-                <Weergavekiezer weergave={weergave} opKiezen={kiesWeergave} />
-              )}
-              {lijst && (
-                <button
-                  onClick={() => {
-                    setNieuweNaam(lijst.name)
-                    setHernoemen(true)
-                  }}
-                  className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-soft transition hover:text-ink"
-                >
-                  Hernoemen
-                </button>
-              )}
-              {(lijst || label) && (
-                <button
-                  onClick={() => void verwijderen()}
-                  className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink-soft transition hover:border-danger hover:text-danger"
-                >
-                  Verwijderen
-                </button>
-              )}
-            </div>
-          }
-        />
+      <Paginakop
+        titel={titel}
+        onderschrift={onderschrift}
+        kleur={lijst?.color ?? label?.color}
+        actie={
+          <div className="flex flex-wrap items-center gap-2">
+            {soort !== 'klaar' && <Weergavekiezer weergave={weergave} opKiezen={kiesWeergave} />}
+            {(lijst || label) && (
+              <Lijstmenu lijst={lijst} label={label} opBewerken={() => setBewerkOpen(true)} />
+            )}
+          </div>
+        }
+      />
+
+      {bewerkOpen && (
+        <LijstDialoog lijst={lijst} label={label} opSluiten={() => setBewerkOpen(false)} />
       )}
 
       {soort !== 'klaar' && (
@@ -167,6 +120,17 @@ export function Filterpagina({ soort }: { soort: Soort }) {
           toonLijst={soort !== 'lijst'}
           lijstId={soort === 'lijst' ? (id ?? null) : null}
         />
+      )}
+
+      {/* De knop boven de pagina is weg; toevoegen hoort onder de lijst, waar
+          je toch al kijkt als je iets mist. */}
+      {soort !== 'klaar' && weergave === 'lijst' && !opgeborgen && (
+        <button
+          onClick={() => nieuweTaak({ lijstId: soort === 'lijst' ? id : null })}
+          className="mt-2 flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-ink-faint transition hover:bg-surface-muted hover:text-brand"
+        >
+          <span className="text-base leading-none">+</span> Taak toevoegen
+        </button>
       )}
 
       {afgerond.length > 0 && soort !== 'inbox' && weergave === 'lijst' && (

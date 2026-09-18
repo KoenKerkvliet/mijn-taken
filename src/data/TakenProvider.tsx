@@ -4,12 +4,19 @@ import { supabase } from '../lib/supabase'
 import type { Label, List, NewTask, Task, TaskWithMeta } from '../lib/types'
 import { useAuth } from '../auth/AuthProvider'
 import { leesCache, schrijfCache, wisCache } from '../lib/cache'
+import { verplaats } from '../lib/volgorde'
 
 interface TakenState {
+  /** De lijsten die in de zijbalk horen: alles wat niet opgeborgen is. */
   lijsten: List[]
+  gearchiveerdeLijsten: List[]
   labels: Label[]
-  /** Alleen hoofdtaken; subtaken zitten in .subtasks van hun ouder. */
+  /** Alleen hoofdtaken; subtaken zitten in .subtasks van hun ouder. Taken uit
+   *  een gearchiveerde lijst zitten er niet bij: opbergen betekent dat ze
+   *  nergens meer meetellen. */
   taken: TaskWithMeta[]
+  /** Inclusief wat in een gearchiveerde lijst staat, voor die lijst zelf. */
+  alleTaken: TaskWithMeta[]
   bezigMetLaden: boolean
   fout: string | null
 
@@ -25,8 +32,11 @@ interface TakenState {
   lijstToevoegen: (naam: string, kleur: string) => Promise<List | null>
   lijstBijwerken: (id: string, wijziging: Partial<List>) => Promise<void>
   lijstVerwijderen: (id: string) => Promise<void>
+  lijstVerplaatsen: (id: string, richting: 'omhoog' | 'omlaag') => Promise<void>
+  lijstArchiveren: (id: string, opbergen: boolean) => Promise<void>
 
   labelToevoegen: (naam: string, kleur: string) => Promise<Label | null>
+  labelBijwerken: (id: string, wijziging: Partial<Label>) => Promise<void>
   labelVerwijderen: (id: string) => Promise<void>
 }
 
@@ -40,7 +50,7 @@ const VERS_GENOEG = 30_000
 
 export function TakenProvider({ children }: { children: ReactNode }) {
   const { session, bezigMetLaden: sessieOnbekend } = useAuth()
-  const [lijsten, setLijsten] = useState<List[]>([])
+  const [alleLijsten, setLijsten] = useState<List[]>([])
   const [labels, setLabels] = useState<Label[]>([])
   const [ruweTaken, setRuweTaken] = useState<Task[]>([])
   const [koppelingen, setKoppelingen] = useState<Koppeling[]>([])
@@ -133,11 +143,17 @@ export function TakenProvider({ children }: { children: ReactNode }) {
   // openen meteen staat.
   useEffect(() => {
     if (!session || bezigMetLaden) return
-    schrijfCache(session.user.id, { lijsten, labels, taken: ruweTaken, koppelingen })
-  }, [session, bezigMetLaden, lijsten, labels, ruweTaken, koppelingen])
+    schrijfCache(session.user.id, { lijsten: alleLijsten, labels, taken: ruweTaken, koppelingen })
+  }, [session, bezigMetLaden, alleLijsten, labels, ruweTaken, koppelingen])
+
+  const lijsten = useMemo(() => alleLijsten.filter((l) => !l.archived_at), [alleLijsten])
+  const gearchiveerdeLijsten = useMemo(
+    () => alleLijsten.filter((l) => Boolean(l.archived_at)),
+    [alleLijsten],
+  )
 
   /** Platte rijen omzetten naar de boom die de UI toont. */
-  const taken = useMemo<TaskWithMeta[]>(() => {
+  const alleTaken = useMemo<TaskWithMeta[]>(() => {
     const perTaak = new Map<string, string[]>()
     for (const k of koppelingen) {
       const bestaand = perTaak.get(k.task_id)
@@ -161,6 +177,14 @@ export function TakenProvider({ children }: { children: ReactNode }) {
         subtasks: kinderen.get(t.id) ?? [],
       }))
   }, [ruweTaken, koppelingen])
+
+  // Wat in een opgeborgen lijst staat telt nergens meer mee: niet in Vandaag,
+  // niet in de aantallen in de zijbalk en niet in zoeken.
+  const taken = useMemo(() => {
+    if (gearchiveerdeLijsten.length === 0) return alleTaken
+    const weg = new Set(gearchiveerdeLijsten.map((l) => l.id))
+    return alleTaken.filter((t) => !t.list_id || !weg.has(t.list_id))
+  }, [alleTaken, gearchiveerdeLijsten])
 
   const taakToevoegen = useCallback<TakenState['taakToevoegen']>(async (invoer) => {
     const { labelIds = [], ...velden } = invoer
@@ -305,7 +329,7 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     async (naam, kleur) => {
       const { data, error } = await supabase
         .from('lists')
-        .insert({ name: naam.trim(), color: kleur, position: lijsten.length })
+        .insert({ name: naam.trim(), color: kleur, position: alleLijsten.length })
         .select()
         .single()
       if (error) {
@@ -315,7 +339,7 @@ export function TakenProvider({ children }: { children: ReactNode }) {
       setLijsten((huidig) => [...huidig, data])
       return data
     },
-    [lijsten.length],
+    [alleLijsten.length],
   )
 
   const lijstBijwerken = useCallback<TakenState['lijstBijwerken']>(async (id, wijziging) => {
@@ -343,6 +367,51 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     setRuweTaken((huidig) => huidig.map((t) => (t.list_id === id ? { ...t, list_id: null } : t)))
   }, [])
 
+  const lijstVerplaatsen = useCallback<TakenState['lijstVerplaatsen']>(
+    async (id, richting) => {
+      const nieuw = verplaats(alleLijsten, id, richting)
+      const veranderd = nieuw.filter(
+        (l) => alleLijsten.find((o) => o.id === l.id)?.position !== l.position,
+      )
+      if (veranderd.length === 0) return
+
+      setLijsten(nieuw)
+      for (const l of veranderd) {
+        const { error } = await supabase
+          .from('lists')
+          .update({ position: l.position })
+          .eq('id', l.id)
+        if (error) {
+          setFout(error.message)
+          await herladen()
+          return
+        }
+      }
+    },
+    [alleLijsten, herladen],
+  )
+
+  const lijstArchiveren = useCallback<TakenState['lijstArchiveren']>(async (id, opbergen) => {
+    const wanneer = opbergen ? new Date().toISOString() : null
+    const { error } = await supabase
+      .from('lists')
+      .update({ archived_at: wanneer })
+      .eq('id', id)
+    if (error) {
+      // Zonder migratie 0002 bestaat de kolom nog niet; dat hoort er dan als
+      // uitleg te staan en niet als een raadselachtige databasefout.
+      setFout(
+        error.message.includes('archived_at')
+          ? 'Archiveren kan pas als migratie 0002 in Supabase is uitgevoerd.'
+          : error.message,
+      )
+      return
+    }
+    setLijsten((huidig) =>
+      huidig.map((l) => (l.id === id ? { ...l, archived_at: wanneer } : l)),
+    )
+  }, [])
+
   const labelToevoegen = useCallback<TakenState['labelToevoegen']>(async (naam, kleur) => {
     const { data, error } = await supabase
       .from('labels')
@@ -357,6 +426,22 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     return data
   }, [])
 
+  const labelBijwerken = useCallback<TakenState['labelBijwerken']>(async (id, wijziging) => {
+    const { data, error } = await supabase
+      .from('labels')
+      .update(wijziging)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) {
+      setFout(error.message)
+      return
+    }
+    setLabels((huidig) =>
+      huidig.map((l) => (l.id === id ? data : l)).sort((a, b) => (a.name < b.name ? -1 : 1)),
+    )
+  }, [])
+
   const labelVerwijderen = useCallback<TakenState['labelVerwijderen']>(async (id) => {
     const { error } = await supabase.from('labels').delete().eq('id', id)
     if (error) {
@@ -369,8 +454,10 @@ export function TakenProvider({ children }: { children: ReactNode }) {
 
   const waarde: TakenState = {
     lijsten,
+    gearchiveerdeLijsten,
     labels,
     taken,
+    alleTaken,
     bezigMetLaden,
     // Mislukt het ophalen terwijl je naar bewaarde gegevens kijkt, dan hoort
     // erbij te staan dat het oud kan zijn.
@@ -384,7 +471,10 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     lijstToevoegen,
     lijstBijwerken,
     lijstVerwijderen,
+    lijstVerplaatsen,
+    lijstArchiveren,
     labelToevoegen,
+    labelBijwerken,
     labelVerwijderen,
   }
 

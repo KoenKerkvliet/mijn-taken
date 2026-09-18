@@ -4,6 +4,9 @@ import { useAuth } from '../auth/AuthProvider'
 import { useTaken } from '../data/TakenProvider'
 import { isAchterstallig, vandaag } from '../lib/dates'
 import { volgendeKleur } from '../lib/kleuren'
+import type { Label, List } from '../lib/types'
+import { Lijstmenu } from './Lijstmenu'
+import { LijstDialoog } from './LijstDialoog'
 
 interface Props {
   opNieuweTaak: () => void
@@ -14,7 +17,8 @@ interface Props {
 
 export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
   const { session, uitloggen } = useAuth()
-  const { lijsten, labels, taken, lijstToevoegen, labelToevoegen } = useTaken()
+  const { lijsten, gearchiveerdeLijsten, labels, taken, lijstToevoegen, labelToevoegen } =
+    useTaken()
   const [nieuweLijst, setNieuweLijst] = useState('')
   const [nieuwLabel, setNieuwLabel] = useState('')
   const [lijstOpen, setLijstOpen] = useState(false)
@@ -22,6 +26,8 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
   const [lijstenUit, setLijstenUit] = useState(false)
   const [labelsUit, setLabelsUit] = useState(false)
   const [profielOpen, setProfielOpen] = useState(false)
+  const [archiefUit, setArchiefUit] = useState(true)
+  const [bewerken, setBewerken] = useState<{ lijst?: List; label?: Label } | null>(null)
 
   const open_taken = taken.filter((t) => !t.completed_at)
   const aantalVandaag = open_taken.filter(
@@ -171,17 +177,12 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
           {!lijstenUit && (
             <ul className="space-y-0.5">
               {lijsten.map((l) => (
-                <li key={l.id}>
-                  <NavLink to={`/lijst/${l.id}`} className={({ isActive }) => regelKlassen(isActive)}>
-                    <span className="grid size-4 shrink-0 place-items-center">
-                      <span className="size-2.5 rounded-full" style={{ background: l.color }} />
-                    </span>
-                    <span className="flex-1 truncate">{l.name}</span>
-                    {perLijst(l.id) > 0 && (
-                      <span className="text-xs text-ink-faint">{perLijst(l.id)}</span>
-                    )}
-                  </NavLink>
-                </li>
+                <Lijstregel
+                  key={l.id}
+                  lijst={l}
+                  aantal={perLijst(l.id)}
+                  opBewerken={() => setBewerken({ lijst: l })}
+                />
               ))}
               {lijsten.length === 0 && !lijstOpen && (
                 <li className="px-3 py-1.5 text-xs text-ink-faint">Nog geen lijsten.</li>
@@ -214,13 +215,19 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
           {!labelsUit && (
             <ul className="space-y-0.5">
               {labels.map((lb) => (
-                <li key={lb.id}>
-                  <NavLink to={`/label/${lb.id}`} className={({ isActive }) => regelKlassen(isActive)}>
+                <li key={lb.id} className="group/regel relative">
+                  <NavLink
+                    to={`/label/${lb.id}`}
+                    className={({ isActive }) => `${regelKlassen(isActive)} pr-9`}
+                  >
                     <span className="grid size-4 shrink-0 place-items-center text-ink-faint">#</span>
                     <span className="flex-1 truncate" style={{ color: lb.color }}>
                       {lb.name}
                     </span>
                   </NavLink>
+                  <span className="absolute inset-y-0 right-1 flex items-center">
+                    <Lijstmenu label={lb} inZijbalk opBewerken={() => setBewerken({ label: lb })} />
+                  </span>
                 </li>
               ))}
               {labels.length === 0 && !labelOpen && (
@@ -228,7 +235,44 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
               )}
             </ul>
           )}
+          {gearchiveerdeLijsten.length > 0 && (
+            <>
+              {/* Opgeborgen lijsten staan onderaan en beginnen ingeklapt: je
+                  hebt ze weggezet, dus ze horen niet meer in de weg te staan. */}
+              <button
+                onClick={() => setArchiefUit((v) => !v)}
+                aria-expanded={!archiefUit}
+                className="mt-5 mb-1 flex w-full items-center gap-1 px-3 py-1 text-left text-xs font-semibold tracking-wider text-ink-faint uppercase transition hover:text-ink-soft"
+              >
+                Archief
+                <span className={archiefUit ? '-rotate-90 text-[10px]' : 'text-[10px]'}>⌄</span>
+                <span className="ml-auto text-[10px] normal-case">
+                  {gearchiveerdeLijsten.length}
+                </span>
+              </button>
+              {!archiefUit && (
+                <ul className="space-y-0.5 opacity-70">
+                  {gearchiveerdeLijsten.map((l) => (
+                    <Lijstregel
+                      key={l.id}
+                      lijst={l}
+                      aantal={0}
+                      opBewerken={() => setBewerken({ lijst: l })}
+                    />
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
         </nav>
+
+        {bewerken && (
+          <LijstDialoog
+            lijst={bewerken.lijst}
+            label={bewerken.label}
+            opSluiten={() => setBewerken(null)}
+          />
+        )}
 
         <p className="hidden border-t border-line px-5 py-2.5 text-[11px] text-ink-faint lg:block">
           <kbd className="rounded border border-line px-1">q</kbd> nieuwe taak ·{' '}
@@ -236,6 +280,35 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
         </p>
       </aside>
     </>
+  )
+}
+
+function Lijstregel({
+  lijst,
+  aantal,
+  opBewerken,
+}: {
+  lijst: List
+  aantal: number
+  opBewerken: () => void
+}) {
+  return (
+    // De knop staat naast de link en niet erin: een knop in een link is voor
+    // een schermlezer (en voor de browser) een raadsel.
+    <li className="group/regel relative">
+      <NavLink to={`/lijst/${lijst.id}`} className={({ isActive }) => `${regelKlassen(isActive)} pr-9`}>
+        <span className="grid size-4 shrink-0 place-items-center">
+          <span className="size-2.5 rounded-full" style={{ background: lijst.color }} />
+        </span>
+        <span className="flex-1 truncate">{lijst.name}</span>
+        {aantal > 0 && (
+          <span className="text-xs text-ink-faint lg:group-hover/regel:invisible">{aantal}</span>
+        )}
+      </NavLink>
+      <span className="absolute inset-y-0 right-1 flex items-center">
+        <Lijstmenu lijst={lijst} inZijbalk opBewerken={opBewerken} />
+      </span>
+    </li>
   )
 }
 

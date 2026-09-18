@@ -8,6 +8,9 @@ export type List = {
   icon: string | null
   position: number
   created_at: string
+  /** Gezet = opgeborgen. Optioneel getypt, zodat de app ook werkt zolang
+   *  migratie 0002 nog niet gedraaid is: dan is het veld er simpelweg niet. */
+  archived_at?: string | null
 }
 
 export type Label = {
