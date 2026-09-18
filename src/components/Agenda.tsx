@@ -4,7 +4,7 @@ import type { TaskWithMeta } from '../lib/types'
 import { parseISODate, startVanDeWeek, toISODate, vandaag } from '../lib/dates'
 import { dagTitel } from '../lib/groepen'
 import { sorteerTaken } from '../lib/sorteren'
-import { PRIORITEITEN } from './TaakDialoog'
+import { PRIORITEITEN } from '../lib/prioriteiten'
 import { TakenLijst } from './TakenLijst'
 
 const DAGKOPPEN = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo']

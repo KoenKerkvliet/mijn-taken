@@ -20,27 +20,32 @@ const TAG = /(^|\s)#([\p{L}\p{N}_-]+)/gu
 export function normaliseer(tekst: string): string {
   return tekst
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/gu, '')
+    .replace(/[̀-ͯ]/gu, '')
     .replace(/[^\p{L}\p{N}]+/gu, '')
     .toLowerCase()
 }
 
-export interface TagUitkomst {
-  /** De titel zonder de tags die ergens op sloegen. */
-  titel: string
+export interface Tagstuk {
+  van: number
+  tot: number
+  soort: 'lijst' | 'label'
+  kleur: string
+}
+
+export interface Tagtreffer {
   lijst: List | null
   labels: Label[]
   /** Tags zonder lijst of label erachter; die blijven in de titel staan. */
   onbekend: string[]
+  /** Waar de herkende tags staan, voor het markeren en wegknippen. */
+  stukken: Tagstuk[]
 }
 
-export function leesTags(ruweTitel: string, lijsten: List[], labels: Label[]): TagUitkomst {
-  const leeg: TagUitkomst = { titel: ruweTitel.trim(), lijst: null, labels: [], onbekend: [] }
-
+export function vindTags(ruweTitel: string, lijsten: List[], labels: Label[]): Tagtreffer {
   let lijst: List | null = null
   const gevondenLabels: Label[] = []
   const onbekend: string[] = []
-  const knippen: { van: number; tot: number }[] = []
+  const stukken: Tagstuk[] = []
 
   for (const match of ruweTitel.matchAll(TAG)) {
     const naam = match[2]
@@ -54,34 +59,19 @@ export function leesTags(ruweTitel: string, lijsten: List[], labels: Label[]): T
     // tag stilletjes negeren is verwarrender dan hem laten staan.
     if (lijstTreffer && !lijst) {
       lijst = lijstTreffer
-      knippen.push({ van, tot })
+      stukken.push({ van, tot, soort: 'lijst', kleur: lijstTreffer.color })
       continue
     }
 
     const labelTreffer = labels.find((l) => normaliseer(l.name) === sleutel)
     if (labelTreffer && !lijstTreffer) {
       if (!gevondenLabels.some((l) => l.id === labelTreffer.id)) gevondenLabels.push(labelTreffer)
-      knippen.push({ van, tot })
+      stukken.push({ van, tot, soort: 'label', kleur: labelTreffer.color })
       continue
     }
 
     onbekend.push(naam)
   }
 
-  if (knippen.length === 0) return { ...leeg, onbekend }
-
-  let titel = ''
-  let positie = 0
-  for (const { van, tot } of knippen) {
-    titel += ruweTitel.slice(positie, van)
-    positie = tot
-  }
-  titel += ruweTitel.slice(positie)
-  titel = titel.replace(/\s+/gu, ' ').trim()
-
-  // "#klas" als hele titel: dan is de tag blijkbaar de taak. Liever niets
-  // koppelen dan een taak zonder titel overhouden.
-  if (!titel) return leeg
-
-  return { titel, lijst, labels: gevondenLabels, onbekend }
+  return { lijst, labels: gevondenLabels, onbekend, stukken }
 }

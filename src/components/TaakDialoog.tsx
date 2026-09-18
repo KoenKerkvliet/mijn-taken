@@ -2,16 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { Priority, TaskWithMeta } from '../lib/types'
-import { overDagen, vandaag } from '../lib/dates'
-import { leesTags } from '../lib/tags'
+import { overDagen, toonDatum, vandaag } from '../lib/dates'
+import { leesTitel, letterlijk } from '../lib/titel'
+import { PRIORITEITEN } from '../lib/prioriteiten'
 import { volgendeKleur } from '../lib/kleuren'
-
-export const PRIORITEITEN: { waarde: Priority; naam: string; kleur: string }[] = [
-  { waarde: 1, naam: 'Urgent', kleur: '#dc2626' },
-  { waarde: 2, naam: 'Hoog', kleur: '#ea580c' },
-  { waarde: 3, naam: 'Normaal', kleur: '#2563eb' },
-  { waarde: 4, naam: 'Laag', kleur: '#94a3b8' },
-]
+import { Titelveld } from './Titelveld'
 
 /** 16px op mobiel, want onder die grens zoomt Safari bij het focussen in. */
 const VELD =
@@ -36,9 +31,13 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [gekozenLabels, setGekozenLabels] = useState<string[]>([])
   const [bezig, setBezig] = useState(false)
 
-  // Wat er met "#klas" in de titel gaat gebeuren. Live, zodat je het ziet
-  // voordat je opslaat in plaats van erna.
-  const tags = useMemo(() => leesTags(titel, lijsten, labels), [titel, lijsten, labels])
+  // Wat er met "#klas", "volgende week donderdag" en "p1" in de titel gaat
+  // gebeuren. Live, zodat je het ziet voordat je opslaat in plaats van erna.
+  // Alleen bij een nieuwe taak: zie letterlijk() in titel.ts.
+  const gelezen = useMemo(
+    () => (taak ? letterlijk(titel) : leesTitel(titel, lijsten, labels)),
+    [taak, titel, lijsten, labels],
+  )
 
   // Bij openen het formulier vullen met de taak (of met de standaarden van de
   // pagina waar je vandaan komt).
@@ -66,20 +65,20 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
 
   async function opslaan(e: FormEvent) {
     e.preventDefault()
-    if (!tags.titel.trim()) return
+    if (!gelezen.titel.trim()) return
     setBezig(true)
 
-    // Een tag in de titel wint van de keuzelijst: die heb je net getypt, de
-    // keuzelijst stond er misschien al vanaf het openen.
+    // Wat in de titel staat wint van de velden eronder: dat heb je net
+    // getypt, de velden stonden er misschien al vanaf het openen.
     const velden = {
-      title: tags.titel,
+      title: gelezen.titel,
       description: omschrijving.trim() || null,
-      due_date: datum || null,
-      priority: prioriteit,
-      list_id: tags.lijst ? tags.lijst.id : lijstId || null,
+      due_date: gelezen.datum ?? (datum || null),
+      priority: gelezen.prioriteit ?? prioriteit,
+      list_id: gelezen.lijst ? gelezen.lijst.id : lijstId || null,
     }
 
-    const alleLabels = [...new Set([...gekozenLabels, ...tags.labels.map((l) => l.id)])]
+    const alleLabels = [...new Set([...gekozenLabels, ...gelezen.labels.map((l) => l.id)])]
 
     if (taak) await taakBijwerken(taak.id, velden, alleLabels)
     else await taakToevoegen({ ...velden, labelIds: alleLabels })
@@ -101,8 +100,14 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     if (nieuw) setLijstId(nieuw.id)
   }
 
-  const gekoppeldViaTag = tags.lijst !== null || tags.labels.length > 0
-  const kanOpslaan = tags.titel.trim().length > 0 && !bezig
+  const uitTitel =
+    gelezen.lijst !== null ||
+    gelezen.labels.length > 0 ||
+    gelezen.datum !== null ||
+    gelezen.prioriteit !== null
+  const datumVast = gelezen.datum !== null
+  const prioriteitVast = gelezen.prioriteit !== null
+  const kanOpslaan = gelezen.titel.trim().length > 0 && !bezig
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto bg-black/40 sm:items-start sm:p-4 sm:pt-[10vh]">
@@ -113,12 +118,11 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
         className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-line bg-surface shadow-2xl sm:rounded-2xl"
       >
         <div className="p-5">
-          <input
-            autoFocus
-            value={titel}
-            onChange={(e) => setTitel(e.target.value)}
-            placeholder="Wat moet er gebeuren? Tip: #lijstnaam"
-            className="w-full bg-transparent text-lg font-medium outline-none placeholder:text-ink-faint"
+          <Titelveld
+            waarde={titel}
+            opWijzigen={setTitel}
+            stukken={gelezen.stukken}
+            placeholder="Wat moet er gebeuren? Bijv. Verslagen nakijken vrijdag p2 #klas"
           />
           <textarea
             value={omschrijving}
@@ -128,27 +132,38 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             className="mt-2 w-full resize-none bg-transparent text-base outline-none placeholder:text-ink-faint sm:text-sm"
           />
 
-          {(gekoppeldViaTag || tags.onbekend.length > 0) && (
+          {(uitTitel || gelezen.onbekend.length > 0) && (
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-xs">
-              {gekoppeldViaTag && (
+              {uitTitel && (
                 <span className="text-ink-soft">
-                  Wordt opgeslagen als <span className="font-medium text-ink">{tags.titel}</span>
+                  Wordt opgeslagen als <span className="font-medium text-ink">{gelezen.titel}</span>
                 </span>
               )}
-              {tags.lijst && (
+              {gelezen.datum && (
+                <span className="font-medium text-brand">🗓️ {toonDatum(gelezen.datum)}</span>
+              )}
+              {gelezen.prioriteit && (
+                <span
+                  className="font-medium"
+                  style={{ color: kleurVan(gelezen.prioriteit) }}
+                >
+                  ⚑ {naamVan(gelezen.prioriteit)}
+                </span>
+              )}
+              {gelezen.lijst && (
                 <span
                   className="rounded-full px-2 py-0.5 font-medium text-white"
-                  style={{ background: tags.lijst.color }}
+                  style={{ background: gelezen.lijst.color }}
                 >
-                  {tags.lijst.name}
+                  {gelezen.lijst.name}
                 </span>
               )}
-              {tags.labels.map((lb) => (
+              {gelezen.labels.map((lb) => (
                 <span key={lb.id} className="font-medium" style={{ color: lb.color }}>
                   #{lb.name}
                 </span>
               ))}
-              {tags.onbekend.map((naam) => (
+              {gelezen.onbekend.map((naam) => (
                 <button
                   key={naam}
                   type="button"
@@ -164,21 +179,29 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <input
               type="date"
-              value={datum}
+              value={gelezen.datum ?? datum}
               onChange={(e) => setDatum(e.target.value)}
-              className={VELD}
+              disabled={datumVast}
+              title={datumVast ? 'Vastgezet door de datum in de titel' : undefined}
+              className={`${VELD} disabled:opacity-60`}
             />
-            <SnelleDatum label="Vandaag" opKlik={() => setDatum(vandaag())} />
-            <SnelleDatum label="Morgen" opKlik={() => setDatum(overDagen(1))} />
-            <SnelleDatum label="Volgende week" opKlik={() => setDatum(overDagen(7))} />
-            {datum && <SnelleDatum label="Wissen" opKlik={() => setDatum('')} />}
+            {!datumVast && (
+              <>
+                <SnelleDatum label="Vandaag" opKlik={() => setDatum(vandaag())} />
+                <SnelleDatum label="Morgen" opKlik={() => setDatum(overDagen(1))} />
+                <SnelleDatum label="Volgende week" opKlik={() => setDatum(overDagen(7))} />
+                {datum && <SnelleDatum label="Wissen" opKlik={() => setDatum('')} />}
+              </>
+            )}
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
             <select
-              value={prioriteit}
+              value={gelezen.prioriteit ?? prioriteit}
               onChange={(e) => setPrioriteit(Number(e.target.value) as Priority)}
-              className={VELD}
+              disabled={prioriteitVast}
+              title={prioriteitVast ? `Vastgezet door p${gelezen.prioriteit} in de titel` : undefined}
+              className={`${VELD} disabled:opacity-60`}
             >
               {PRIORITEITEN.map((p) => (
                 <option key={p.waarde} value={p.waarde}>
@@ -188,10 +211,10 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             </select>
 
             <select
-              value={tags.lijst ? tags.lijst.id : lijstId}
+              value={gelezen.lijst ? gelezen.lijst.id : lijstId}
               onChange={(e) => setLijstId(e.target.value)}
-              disabled={tags.lijst !== null}
-              title={tags.lijst ? `Vastgezet door #${tags.lijst.name} in de titel` : undefined}
+              disabled={gelezen.lijst !== null}
+              title={gelezen.lijst ? `Vastgezet door #${gelezen.lijst.name} in de titel` : undefined}
               className={`${VELD} disabled:opacity-60`}
             >
               <option value="">Inbox (geen lijst)</option>
@@ -206,7 +229,8 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
           {labels.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {labels.map((lb) => {
-                const aan = gekozenLabels.includes(lb.id) || tags.labels.some((t) => t.id === lb.id)
+                const aan =
+                  gekozenLabels.includes(lb.id) || gelezen.labels.some((t) => t.id === lb.id)
                 return (
                   <button
                     key={lb.id}
@@ -245,6 +269,14 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
       </form>
     </div>
   )
+}
+
+function kleurVan(waarde: Priority): string {
+  return PRIORITEITEN.find((p) => p.waarde === waarde)?.kleur ?? '#94a3b8'
+}
+
+function naamVan(waarde: Priority): string {
+  return PRIORITEITEN.find((p) => p.waarde === waarde)?.naam ?? ''
 }
 
 function SnelleDatum({ label, opKlik }: { label: string; opKlik: () => void }) {

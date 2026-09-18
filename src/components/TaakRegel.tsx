@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
 import { isAchterstallig, toonDatum } from '../lib/dates'
-import { PRIORITEITEN } from './TaakDialoog'
+import { PRIORITEITEN } from '../lib/prioriteiten'
 
 interface Props {
   taak: TaskWithMeta

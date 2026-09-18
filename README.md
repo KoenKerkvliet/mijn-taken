@@ -41,6 +41,37 @@ trouwens muiswerk - op een touchscreen verzet je een datum via het taakvenster.
 Op een breed scherm openen `q` een nieuwe taak en `/` de zoekpagina, zolang je
 niet in een invoerveld staat.
 
+## Datum en prioriteit gewoon intypen
+
+Typ je `Verslagen uitwerken volgende week donderdag p1`, dan wordt dat een
+taak *Verslagen uitwerken* op die donderdag met prioriteit Urgent. Wat er
+herkend wordt krijgt meteen een kleurtje in het invoerveld, en eronder staat
+wat er opgeslagen gaat worden - je ziet het dus voordat je opslaat.
+
+Wat er begrepen wordt:
+
+- `vandaag`, `morgen`, `overmorgen`
+- een weekdag: `vrijdag` is de eerstvolgende vrijdag, en op een vrijdag is dat
+  vandaag. Bedoel je de week erna, dan zeg je dat: `volgende week vrijdag`.
+  `aanstaande dinsdag` en `komende dinsdag` mogen ook.
+- `volgende week` zonder dag erachter is aanstaande maandag.
+- een datum: `1 okt`, `1 oktober`, `1 oktober 2027`, `donderdag 1 oktober`,
+  `3-10`, `15/11`. Zonder jaartal wordt het de eerstvolgende keer dat die dag
+  langskomt; in december is `3 januari` dus volgend jaar.
+- `over drie dagen`, `over 2 weken`, `over een maand`
+- `p1` tot en met `p4` voor de prioriteit.
+
+Er wordt niet op afkortingen als `ma` of `zo` gezocht: dat zijn ook gewone
+woorden, en een taak die stilletjes een woord uit zijn titel kwijtraakt is
+erger dan een datum die je zelf even aanklikt. Om dezelfde reden blijft
+`Morgenoverleg` heel en wordt `Top3` niet als prioriteit gelezen. Bestaat een
+datum niet (`31 februari`), dan gebeurt er niets.
+
+Dit werkt bij het **maken** van een taak. Bewerk je een taak die er al is, dan
+blijft de titel letterlijk staan - een oud "Rapport 5 mei bespreken" hoort niet
+bij het eerste het beste bewerken ineens "Rapport bespreken" te worden. De
+datum en prioriteit staan bij het bewerken gewoon in de velden eronder.
+
 ## Snel koppelen met #
 
 Typ je `Verslagen uitwerken #klas`, dan komt de taak in de lijst *Klas* te

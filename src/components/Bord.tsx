@@ -3,7 +3,7 @@ import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
 import type { Groep } from '../lib/groepen'
 import { isAchterstallig, toonDatum } from '../lib/dates'
-import { PRIORITEITEN } from './TaakDialoog'
+import { PRIORITEITEN } from '../lib/prioriteiten'
 import { Vinkje } from './TaakRegel'
 
 interface Props {
