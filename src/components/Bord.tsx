@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
 import type { Groep } from '../lib/groepen'
@@ -21,7 +21,20 @@ interface Props {
 export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = null }: Props) {
   const { taakVerzetten } = useTaken()
   const [boven, setBoven] = useState<string | null>(null)
+  const [sleeptKaart, setSleeptKaart] = useState(false)
+  const [pannen, setPannen] = useState(false)
   const baan = useRef<HTMLDivElement>(null)
+  const greep = useRef<{ id: number; x: number; scroll: number } | null>(null)
+
+  // Lege kolommen zijn zonde van de breedte, dus die blijven weg. Behalve
+  // terwijl je een kaart versleept: dan moet je er juist iets in kunnen
+  // laten vallen. En staat alles leeg, dan zou er niets overblijven om een
+  // taak aan toe te voegen.
+  const zichtbaar = useMemo(() => {
+    const gevuld = groepen.filter((g) => g.taken.length > 0)
+    if (sleeptKaart || gevuld.length === 0) return groepen
+    return gevuld
+  }, [groepen, sleeptKaart])
 
   // Een muis heeft meestal geen wieltje opzij, en dan kom je met de hand nooit
   // bij de laatste kolom. Rolt er verticaal iets binnen terwijl het bord nog
@@ -48,14 +61,50 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
     return () => el.removeEventListener('wheel', opWiel)
   }, [])
 
+  /** Het bord aan de achtergrond opzij trekken. Alleen met de muis: op een
+   *  touchscreen veeg je gewoon, en dan zou dit die veeg juist afpakken. */
+  function pakken(e: React.PointerEvent) {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return
+    // Een kaart of een knop heeft zijn eigen bedoeling met een sleep.
+    if ((e.target as HTMLElement).closest('article, button, input, select, textarea, a')) return
+    const el = baan.current
+    if (!el || el.scrollWidth <= el.clientWidth) return
+    greep.current = { id: e.pointerId, x: e.clientX, scroll: el.scrollLeft }
+    el.setPointerCapture(e.pointerId)
+    setPannen(true)
+  }
+
+  function trekken(e: React.PointerEvent) {
+    const vast = greep.current
+    if (!vast || vast.id !== e.pointerId || !baan.current) return
+    baan.current.scrollLeft = vast.scroll - (e.clientX - vast.x)
+  }
+
+  function loslaten(e: React.PointerEvent) {
+    if (!greep.current) return
+    baan.current?.releasePointerCapture(e.pointerId)
+    greep.current = null
+    setPannen(false)
+  }
+
+  const kanSchuiven = (baan.current?.scrollWidth ?? 0) > (baan.current?.clientWidth ?? 0)
+
   return (
-    // Op een telefoon is een kolom bijna het hele scherm, dus daar schuift het
-    // bord met een vangpunt per kolom. Op een breed scherm juist niet: dan wil
-    // je vrij kunnen schuiven en passen er meer kolommen naast elkaar.
+    // Het bord vult de rest van het scherm. Daardoor staat de schuifbalk altijd
+    // onderaan in beeld, ook als één kolom veel langer is dan de rest; die
+    // kolom schuift van binnen.
     <div
       ref={baan}
-      className="schuifbaan -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:snap-none sm:px-6">
-      {groepen.map((groep) => {
+      onPointerDown={pakken}
+      onPointerMove={trekken}
+      onPointerUp={loslaten}
+      onPointerCancel={loslaten}
+      className={[
+        'schuifbaan -mx-4 flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-4 sm:-mx-6 sm:snap-none sm:px-6',
+        pannen ? 'cursor-grabbing select-none' : kanSchuiven ? 'sm:cursor-grab' : '',
+      ].join(' ')}
+    >
+      {zichtbaar.map((groep) => {
         // `datum === undefined` betekent: deze kolom heeft geen eigen dag, dus
         // slepen zou niet weten welke datum het moest worden.
         const sleepbaar = groep.datum !== undefined
@@ -78,11 +127,13 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
               if (id) void taakVerzetten(id, groep.datum ?? null)
             }}
             className={[
-              'flex w-[17rem] shrink-0 snap-start flex-col rounded-xl border p-2 transition sm:w-60',
+              'flex w-[17rem] shrink-0 snap-start flex-col rounded-xl border transition sm:w-60',
               actief ? 'border-brand bg-brand-soft' : 'border-transparent',
+              // Tijdens het slepen mag je zien waar de lege kolommen zitten.
+              sleeptKaart && groep.taken.length === 0 ? 'border-dashed border-line' : '',
             ].join(' ')}
           >
-            <h2 className="flex items-center gap-2 px-1 pt-1 pb-2 text-sm font-semibold tracking-tight">
+            <h2 className="flex shrink-0 items-center gap-2 px-3 pt-3 pb-2 text-sm font-semibold tracking-tight">
               <span
                 className={[
                   'first-letter:uppercase',
@@ -95,21 +146,27 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
               {groep.actie && <span className="ml-auto">{groep.actie}</span>}
             </h2>
 
-            <div className="flex flex-1 flex-col gap-2">
+            {/* De kolom schuift van binnen, zodat de schuifbalk van het bord
+                zelf onderaan het scherm blijft staan. */}
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-20 lg:pb-3">
               {groep.taken.map((t) => (
-                <Kaart key={t.id} taak={t} opBewerken={opBewerken} toonLijst={toonLijst} />
+                <Kaart
+                  key={t.id}
+                  taak={t}
+                  opBewerken={opBewerken}
+                  toonLijst={toonLijst}
+                  opSlepen={setSleeptKaart}
+                />
               ))}
 
-              {groep.taken.length === 0 && (
-                <p className="px-1 py-2 text-xs text-ink-faint">
-                  {groep.leegTekst ?? 'Leeg.'}
-                </p>
+              {groep.taken.length === 0 && !sleeptKaart && (
+                <p className="px-1 py-2 text-xs text-ink-faint">{groep.leegTekst ?? 'Leeg.'}</p>
               )}
 
               {sleepbaar && (
                 <button
                   onClick={() => opNieuweTaak({ datum: groep.datum ?? null, lijstId })}
-                  className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-ink-faint transition hover:bg-surface-muted hover:text-brand"
+                  className="flex shrink-0 items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-ink-faint transition hover:bg-surface-muted hover:text-brand"
                 >
                   <span className="text-base leading-none">+</span> Taak toevoegen
                 </button>
@@ -126,10 +183,12 @@ function Kaart({
   taak,
   opBewerken,
   toonLijst = true,
+  opSlepen,
 }: {
   taak: TaskWithMeta
   opBewerken: (taak: TaskWithMeta) => void
   toonLijst?: boolean
+  opSlepen: (bezig: boolean) => void
 }) {
   const { lijsten, labels, taakAfvinken } = useTaken()
   const [gepakt, setGepakt] = useState(false)
@@ -148,10 +207,14 @@ function Kaart({
         e.dataTransfer.setData('text/plain', taak.id)
         e.dataTransfer.effectAllowed = 'move'
         setGepakt(true)
+        opSlepen(true)
       }}
-      onDragEnd={() => setGepakt(false)}
+      onDragEnd={() => {
+        setGepakt(false)
+        opSlepen(false)
+      }}
       className={[
-        'rounded-xl border border-line bg-surface p-3 shadow-sm transition',
+        'shrink-0 rounded-xl border border-line bg-surface p-3 shadow-sm transition',
         gepakt ? 'opacity-40' : 'hover:border-ink-faint/40',
       ].join(' ')}
     >

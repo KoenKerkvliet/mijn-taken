@@ -1,8 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Label, List, NewTask, Task, TaskWithMeta } from '../lib/types'
 import { useAuth } from '../auth/AuthProvider'
+import { leesCache, schrijfCache, wisCache } from '../lib/cache'
 
 interface TakenState {
   lijsten: List[]
@@ -31,18 +32,25 @@ interface TakenState {
 
 const TakenContext = createContext<TakenState | null>(null)
 
+type Koppeling = { task_id: string; label_id: string }
+
+/** Niet vaker dan eens per halve minuut opnieuw ophalen als je terugkomt op
+ *  het tabblad. Even wegklikken en terugkomen hoort geen laadmoment te zijn. */
+const VERS_GENOEG = 30_000
+
 export function TakenProvider({ children }: { children: ReactNode }) {
-  const { session } = useAuth()
+  const { session, bezigMetLaden: sessieOnbekend } = useAuth()
   const [lijsten, setLijsten] = useState<List[]>([])
   const [labels, setLabels] = useState<Label[]>([])
   const [ruweTaken, setRuweTaken] = useState<Task[]>([])
-  const [koppelingen, setKoppelingen] = useState<{ task_id: string; label_id: string }[]>([])
+  const [koppelingen, setKoppelingen] = useState<Koppeling[]>([])
   const [bezigMetLaden, setBezigMetLaden] = useState(true)
   const [fout, setFout] = useState<string | null>(null)
+  const [uitCache, setUitCache] = useState(false)
+  const laatstGehaald = useRef(0)
 
   const herladen = useCallback(async () => {
     if (!session) return
-    setFout(null)
     const [l, lb, t, tl] = await Promise.all([
       supabase.from('lists').select('*').order('position').order('created_at'),
       supabase.from('labels').select('*').order('name'),
@@ -57,6 +65,9 @@ export function TakenProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    setFout(null)
+    setUitCache(false)
+    laatstGehaald.current = Date.now()
     setLijsten(l.data ?? [])
     setLabels(lb.data ?? [])
     setRuweTaken((t.data ?? []) as Task[])
@@ -65,17 +76,65 @@ export function TakenProvider({ children }: { children: ReactNode }) {
   }, [session])
 
   useEffect(() => {
+    // Zolang de sessie nog opgehaald wordt, is "niet ingelogd" niet hetzelfde
+    // als "uitgelogd". Wissen we hier te vroeg, dan gooien we de cache weg
+    // vlak voordat we hem nodig hebben.
+    if (sessieOnbekend) return
+
     if (!session) {
       setLijsten([])
       setLabels([])
       setRuweTaken([])
       setKoppelingen([])
       setBezigMetLaden(false)
+      // Uitgelogd is uitgelogd: dan hoort er niets van je taken achter te
+      // blijven op deze computer.
+      wisCache()
       return
     }
-    setBezigMetLaden(true)
+
+    // Wat er de vorige keer stond, staat er meteen weer. Ondertussen wordt
+    // alles opnieuw opgehaald en overschreven; je kijkt dus hooguit een
+    // seconde naar iets ouds, in plaats van naar een leeg scherm.
+    const bewaard = leesCache(session.user.id)
+    if (bewaard) {
+      setLijsten(bewaard.lijsten)
+      setLabels(bewaard.labels)
+      setRuweTaken(bewaard.taken)
+      setKoppelingen(bewaard.koppelingen)
+      setUitCache(true)
+      setBezigMetLaden(false)
+    } else {
+      setBezigMetLaden(true)
+    }
+
     void herladen()
+  }, [session, sessieOnbekend, herladen])
+
+  // Bijwerken gebeurt hierna in het klein: elke wijziging past de lijst hier
+  // aan in plaats van alles opnieuw op te halen. Terugkomen op het tabblad is
+  // het moment om te kijken of er elders iets veranderd is.
+  useEffect(() => {
+    if (!session) return
+    function bijTerugkomst() {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - laatstGehaald.current < VERS_GENOEG) return
+      void herladen()
+    }
+    document.addEventListener('visibilitychange', bijTerugkomst)
+    window.addEventListener('focus', bijTerugkomst)
+    return () => {
+      document.removeEventListener('visibilitychange', bijTerugkomst)
+      window.removeEventListener('focus', bijTerugkomst)
+    }
   }, [session, herladen])
+
+  // Alles bewaren zodra het verandert, zodat het er bij de volgende keer
+  // openen meteen staat.
+  useEffect(() => {
+    if (!session || bezigMetLaden) return
+    schrijfCache(session.user.id, { lijsten, labels, taken: ruweTaken, koppelingen })
+  }, [session, bezigMetLaden, lijsten, labels, ruweTaken, koppelingen])
 
   /** Platte rijen omzetten naar de boom die de UI toont. */
   const taken = useMemo<TaskWithMeta[]>(() => {
@@ -103,61 +162,83 @@ export function TakenProvider({ children }: { children: ReactNode }) {
       }))
   }, [ruweTaken, koppelingen])
 
-  const taakToevoegen = useCallback<TakenState['taakToevoegen']>(
-    async (invoer) => {
-      const { labelIds = [], ...velden } = invoer
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          title: velden.title.trim(),
-          description: velden.description?.trim() || null,
-          due_date: velden.due_date ?? null,
-          priority: velden.priority ?? 4,
-          list_id: velden.list_id ?? null,
-          parent_id: velden.parent_id ?? null,
-        })
-        .select()
-        .single()
+  const taakToevoegen = useCallback<TakenState['taakToevoegen']>(async (invoer) => {
+    const { labelIds = [], ...velden } = invoer
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        title: velden.title.trim(),
+        description: velden.description?.trim() || null,
+        due_date: velden.due_date ?? null,
+        priority: velden.priority ?? 4,
+        list_id: velden.list_id ?? null,
+        parent_id: velden.parent_id ?? null,
+      })
+      .select()
+      .single()
 
-      if (error) {
-        setFout(error.message)
-        return
+    if (error) {
+      setFout(error.message)
+      return
+    }
+
+    // De rij komt terug zoals hij is opgeslagen, inclusief wat de database er
+    // zelf van maakt. Daarmee kan hij er hier gewoon bij; opnieuw alles
+    // ophalen levert precies dezelfde rij op.
+    setRuweTaken((huidig) => [...huidig, data as Task])
+
+    if (labelIds.length > 0) {
+      const { error: koppelFout } = await supabase
+        .from('task_labels')
+        .insert(labelIds.map((label_id) => ({ task_id: data.id, label_id })))
+      if (koppelFout) setFout(koppelFout.message)
+      else {
+        setKoppelingen((huidig) => [
+          ...huidig,
+          ...labelIds.map((label_id) => ({ task_id: data.id, label_id })),
+        ])
       }
-
-      if (labelIds.length > 0) {
-        const { error: koppelFout } = await supabase
-          .from('task_labels')
-          .insert(labelIds.map((label_id) => ({ task_id: data.id, label_id })))
-        if (koppelFout) setFout(koppelFout.message)
-      }
-
-      await herladen()
-    },
-    [herladen],
-  )
+    }
+  }, [])
 
   const taakBijwerken = useCallback<TakenState['taakBijwerken']>(
     async (id, wijziging, labelIds) => {
-      const { error } = await supabase.from('tasks').update(wijziging).eq('id', id)
+      const { data, error } = await supabase
+        .from('tasks')
+        .update(wijziging)
+        .eq('id', id)
+        .select()
+        .single()
       if (error) {
         setFout(error.message)
         return
       }
+      setRuweTaken((huidig) => huidig.map((t) => (t.id === id ? (data as Task) : t)))
 
       if (labelIds) {
         // Simpelweg opnieuw zetten: bij een handjevol labels per taak is dat
         // goedkoper dan uitrekenen wat er precies veranderd is.
-        await supabase.from('task_labels').delete().eq('task_id', id)
+        const { error: wisFout } = await supabase.from('task_labels').delete().eq('task_id', id)
+        if (wisFout) {
+          setFout(wisFout.message)
+          return
+        }
         if (labelIds.length > 0) {
-          await supabase
+          const { error: koppelFout } = await supabase
             .from('task_labels')
             .insert(labelIds.map((label_id) => ({ task_id: id, label_id })))
+          if (koppelFout) {
+            setFout(koppelFout.message)
+            return
+          }
         }
+        setKoppelingen((huidig) => [
+          ...huidig.filter((k) => k.task_id !== id),
+          ...labelIds.map((label_id) => ({ task_id: id, label_id })),
+        ])
       }
-
-      await herladen()
     },
-    [herladen],
+    [],
   )
 
   const taakAfvinken = useCallback<TakenState['taakAfvinken']>(
@@ -177,14 +258,19 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     [herladen],
   )
 
-  const taakVerwijderen = useCallback<TakenState['taakVerwijderen']>(
-    async (id) => {
-      const { error } = await supabase.from('tasks').delete().eq('id', id)
-      if (error) setFout(error.message)
-      await herladen()
-    },
-    [herladen],
-  )
+  const taakVerwijderen = useCallback<TakenState['taakVerwijderen']>(async (id) => {
+    const { error } = await supabase.from('tasks').delete().eq('id', id)
+    if (error) {
+      setFout(error.message)
+      return
+    }
+    // Subtaken gaan in de database mee (on delete cascade); hier dus ook.
+    setRuweTaken((huidig) => {
+      const weg = new Set([id, ...huidig.filter((t) => t.parent_id === id).map((t) => t.id)])
+      setKoppelingen((k) => k.filter((x) => !weg.has(x.task_id)))
+      return huidig.filter((t) => !weg.has(t.id))
+    })
+  }, [])
 
   const taakVerzetten = useCallback<TakenState['taakVerzetten']>(
     async (id, datum) => {
@@ -226,63 +312,69 @@ export function TakenProvider({ children }: { children: ReactNode }) {
         setFout(error.message)
         return null
       }
-      await herladen()
+      setLijsten((huidig) => [...huidig, data])
       return data
     },
-    [herladen, lijsten.length],
+    [lijsten.length],
   )
 
-  const lijstBijwerken = useCallback<TakenState['lijstBijwerken']>(
-    async (id, wijziging) => {
-      const { error } = await supabase.from('lists').update(wijziging).eq('id', id)
-      if (error) setFout(error.message)
-      await herladen()
-    },
-    [herladen],
-  )
+  const lijstBijwerken = useCallback<TakenState['lijstBijwerken']>(async (id, wijziging) => {
+    const { data, error } = await supabase
+      .from('lists')
+      .update(wijziging)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) {
+      setFout(error.message)
+      return
+    }
+    setLijsten((huidig) => huidig.map((l) => (l.id === id ? data : l)))
+  }, [])
 
-  const lijstVerwijderen = useCallback<TakenState['lijstVerwijderen']>(
-    async (id) => {
-      // De taken blijven bestaan (list_id wordt null) en komen in de inbox.
-      const { error } = await supabase.from('lists').delete().eq('id', id)
-      if (error) setFout(error.message)
-      await herladen()
-    },
-    [herladen],
-  )
+  const lijstVerwijderen = useCallback<TakenState['lijstVerwijderen']>(async (id) => {
+    const { error } = await supabase.from('lists').delete().eq('id', id)
+    if (error) {
+      setFout(error.message)
+      return
+    }
+    // De taken blijven bestaan (list_id wordt null) en komen in de inbox.
+    setLijsten((huidig) => huidig.filter((l) => l.id !== id))
+    setRuweTaken((huidig) => huidig.map((t) => (t.list_id === id ? { ...t, list_id: null } : t)))
+  }, [])
 
-  const labelToevoegen = useCallback<TakenState['labelToevoegen']>(
-    async (naam, kleur) => {
-      const { data, error } = await supabase
-        .from('labels')
-        .insert({ name: naam.trim(), color: kleur })
-        .select()
-        .single()
-      if (error) {
-        setFout(error.message)
-        return null
-      }
-      await herladen()
-      return data
-    },
-    [herladen],
-  )
+  const labelToevoegen = useCallback<TakenState['labelToevoegen']>(async (naam, kleur) => {
+    const { data, error } = await supabase
+      .from('labels')
+      .insert({ name: naam.trim(), color: kleur })
+      .select()
+      .single()
+    if (error) {
+      setFout(error.message)
+      return null
+    }
+    setLabels((huidig) => [...huidig, data].sort((a, b) => (a.name < b.name ? -1 : 1)))
+    return data
+  }, [])
 
-  const labelVerwijderen = useCallback<TakenState['labelVerwijderen']>(
-    async (id) => {
-      const { error } = await supabase.from('labels').delete().eq('id', id)
-      if (error) setFout(error.message)
-      await herladen()
-    },
-    [herladen],
-  )
+  const labelVerwijderen = useCallback<TakenState['labelVerwijderen']>(async (id) => {
+    const { error } = await supabase.from('labels').delete().eq('id', id)
+    if (error) {
+      setFout(error.message)
+      return
+    }
+    setLabels((huidig) => huidig.filter((l) => l.id !== id))
+    setKoppelingen((huidig) => huidig.filter((k) => k.label_id !== id))
+  }, [])
 
   const waarde: TakenState = {
     lijsten,
     labels,
     taken,
     bezigMetLaden,
-    fout,
+    // Mislukt het ophalen terwijl je naar bewaarde gegevens kijkt, dan hoort
+    // erbij te staan dat het oud kan zijn.
+    fout: fout && uitCache ? `${fout} Je ziet de gegevens van je vorige bezoek.` : fout,
     taakToevoegen,
     taakBijwerken,
     taakAfvinken,

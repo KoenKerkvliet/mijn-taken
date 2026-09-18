@@ -7,7 +7,7 @@ import { Taakweergave } from '../components/Taakweergave'
 import { Weergavekiezer } from '../components/Weergavekiezer'
 import { opDatumGroeperen, type Groep } from '../lib/groepen'
 import { sorteerTaken } from '../lib/sorteren'
-import { breedte, useWeergave } from '../lib/weergave'
+import { paginaKlassen, useWeergave } from '../lib/weergave'
 
 type Soort = 'inbox' | 'klaar' | 'lijst' | 'label'
 
@@ -104,7 +104,7 @@ export function Filterpagina({ soort }: { soort: Soort }) {
   }
 
   return (
-    <div className={`mx-auto w-full px-4 pt-6 pb-28 sm:px-6 lg:pb-16 ${breedte(weergave)}`}>
+    <div className={paginaKlassen(weergave)}>
       {hernoemen && lijst ? (
         <form onSubmit={naamOpslaan} className="mb-6">
           <input

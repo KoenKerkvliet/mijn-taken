@@ -5,6 +5,7 @@ import { Sectie, TakenLijst } from '../components/TakenLijst'
 import { normaliseer } from '../lib/tags'
 import { sorteerTaken } from '../lib/sorteren'
 import type { TaskWithMeta } from '../lib/types'
+import { paginaKlassen } from '../lib/weergave'
 
 export function Zoeken() {
   const { taken, lijsten, labels } = useTaken()
@@ -45,7 +46,7 @@ export function Zoeken() {
   }, [vraag, taken, lijsten, labels])
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 pt-6 pb-28 sm:px-6 lg:pb-16">
+    <div className={paginaKlassen('lijst')}>
       <Paginakop titel="Zoeken" onderschrift="Door titels, omschrijvingen, lijsten en labels." />
 
       <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3.5 py-2.5 focus-within:border-brand">

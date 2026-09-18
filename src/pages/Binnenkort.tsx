@@ -5,7 +5,7 @@ import { Weergavekiezer } from '../components/Weergavekiezer'
 import { overDagen } from '../lib/dates'
 import { dagTitel, type Groep } from '../lib/groepen'
 import { sorteerTaken } from '../lib/sorteren'
-import { breedte, useWeergave } from '../lib/weergave'
+import { paginaKlassen, useWeergave } from '../lib/weergave'
 
 const DAGEN_VOORUIT = 7
 
@@ -33,7 +33,7 @@ export function Binnenkort() {
   ]
 
   return (
-    <div className={`mx-auto w-full px-4 pt-6 pb-28 sm:px-6 lg:pb-16 ${breedte(weergave)}`}>
+    <div className={paginaKlassen(weergave)}>
       <Paginakop
         titel="Binnenkort"
         onderschrift="De komende zeven dagen, dag voor dag."

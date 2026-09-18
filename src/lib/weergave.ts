@@ -51,10 +51,13 @@ export function useWeergave(pagina: string): [Weergave, (w: Weergave) => void] {
   return [weergave, kies]
 }
 
-/** Hoe breed de pagina mag worden. Een lijst leest prettig op leesbreedte,
- *  maar een bord wil al zijn kolommen kwijt en een agenda een hele week. */
-export function breedte(weergave: Weergave): string {
-  if (weergave === 'bord') return 'max-w-none'
-  if (weergave === 'agenda') return 'max-w-5xl'
-  return 'max-w-4xl'
+/** De omhulling van een pagina. Een lijst leest prettig op leesbreedte, een
+ *  agenda wil een hele week kwijt, en een bord vult het scherm: alleen zo
+ *  staat de schuifbalk onderaan in beeld in plaats van onder de langste
+ *  kolom. */
+export function paginaKlassen(weergave: Weergave): string {
+  const basis = 'mx-auto w-full px-4 pt-6 sm:px-6'
+  if (weergave === 'bord') return `${basis} flex min-h-0 max-w-none flex-1 flex-col`
+  if (weergave === 'agenda') return `${basis} max-w-5xl pb-28 lg:pb-16`
+  return `${basis} max-w-4xl pb-28 lg:pb-16`
 }

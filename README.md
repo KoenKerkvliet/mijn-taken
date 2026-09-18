@@ -30,6 +30,10 @@ Rechtsboven op elke pagina staat **Weergave**. Dezelfde taken, drie brillen:
 - **Lijst** - alles onder elkaar, met kopjes per dag of per soort.
 - **Bord** - kolommen naast elkaar. Sleep een kaart naar een andere kolom en de
   datum gaat mee; in "Geen datum" laten vallen haalt de datum er juist af.
+  Lege kolommen blijven weg - behalve terwijl je sleept, want dan moet je er
+  juist iets in kunnen laten vallen. Het bord vult het scherm, zodat de
+  schuifbalk onderaan in beeld staat en niet onder de langste kolom. Schuiven
+  gaat met het muiswiel, of door het bord aan de achtergrond opzij te trekken.
 - **Agenda** - een hele maand in beeld, met de gekozen dag eronder uitgeschreven.
   Slepen werkt hier ook, en taken zonder datum staan onder het raster klaar om
   ingepland te worden.
@@ -98,9 +102,22 @@ adresbalk, met een eigen icoon en twee snelkoppelingen (nieuwe taak,
 binnenkort) onder een lange druk op het icoon.
 
 De service worker bewaart alleen de schil van de app - html, css, javascript
-en iconen. Taken komen altijd vers van Supabase. Zonder verbinding opent de
-app dus wel, maar zie je geen taken; een afgevinkte taak die uit een cache
-terugkomt is vervelender dan een eerlijke foutmelding.
+en iconen, en nooit taken. Zonder verbinding opent de app dus wel, maar zie je
+geen taken; een afgevinkte taak die uit een cache terugkomt zonder dat iets
+dat rechtzet is vervelender dan een eerlijke foutmelding.
+
+De app zelf bewaart wel wat er de vorige keer op het scherm stond (in
+`localStorage`, zie `lib/cache.ts`). Bij het openen staat dat er meteen weer,
+terwijl alles op de achtergrond opnieuw wordt opgehaald en overschreven. Je
+kijkt dus hooguit een seconde naar iets ouds in plaats van naar een leeg
+scherm - en anders dan bij de service worker staat de correctie altijd achter
+de deur, want zonder verbinding kom je hier niet eens. Mislukt het ophalen
+toch, dan staat dat in de foutmelding erbij. Bij uitloggen wordt het gewist.
+
+Verder haalt de app niet meer bij elke wijziging alles opnieuw op: een taak
+toevoegen, afvinken, verzetten of verwijderen past de lijst hier aan met wat
+de database terugstuurt. Opnieuw ophalen gebeurt bij het openen en wanneer je
+na een halve minuut of langer terugkomt op het tabblad.
 
 De iconen in `public/` komen uit `scripts/maak-iconen.mjs`, dat dezelfde vorm
 tekent als `favicon.svg`. Kleur veranderd? Dan `node scripts/maak-iconen.mjs`

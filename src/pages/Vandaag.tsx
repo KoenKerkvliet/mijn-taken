@@ -6,7 +6,7 @@ import { Weergavekiezer } from '../components/Weergavekiezer'
 import { isAchterstallig, vandaag } from '../lib/dates'
 import type { Groep } from '../lib/groepen'
 import { sorteerTaken } from '../lib/sorteren'
-import { breedte, useWeergave } from '../lib/weergave'
+import { paginaKlassen, useWeergave } from '../lib/weergave'
 
 export function Vandaag() {
   const { taken, takenHerplannen } = useTaken()
@@ -75,7 +75,7 @@ export function Vandaag() {
   ]
 
   return (
-    <div className={`mx-auto w-full px-4 pt-6 pb-28 sm:px-6 lg:pb-16 ${breedte(weergave)}`}>
+    <div className={paginaKlassen(weergave)}>
       <Paginakop
         titel="Vandaag"
         onderschrift={datumTekst.charAt(0).toUpperCase() + datumTekst.slice(1)}
