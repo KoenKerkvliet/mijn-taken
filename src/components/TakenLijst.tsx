@@ -30,22 +30,28 @@ export function Sectie({
   titel,
   aantal,
   accent,
+  actie,
   children,
 }: {
   titel: string
   aantal?: number
   accent?: boolean
+  /** Knop rechts van het kopje; blijft leeg als er niets te doen valt. */
+  actie?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <section className="mb-7">
       <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold tracking-tight">
-        <span className={accent ? 'text-danger' : ''}>{titel}</span>
+        <span className={['first-letter:uppercase', accent ? 'text-danger' : ''].join(' ')}>
+          {titel}
+        </span>
         {aantal !== undefined && aantal > 0 && (
           <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-soft">
             {aantal}
           </span>
         )}
+        {actie && <span className="ml-auto">{actie}</span>}
       </h2>
       {children}
     </section>

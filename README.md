@@ -10,14 +10,36 @@ dashboard; de startpagina is alleen een inlogscherm.
 ## Wat er in zit
 
 - **Vandaag** - achterstallige taken, wat vandaag afloopt, en cijfers over open,
-  achterstallig en afgerond werk (inclusief een weekgrafiek).
+  achterstallig en afgerond werk (inclusief een weekgrafiek). Staat er iets te
+  laat, dan zet **Herplannen** de hele stapel in een keer op vandaag.
 - **Binnenkort** - de komende zeven dagen, dag voor dag.
+- **Zoeken** - door titels, omschrijvingen, subtaken, lijstnamen en labels.
+  Elk woord moet ergens raak zijn, dus je maakt een zoekopdracht scherper door
+  door te typen.
 - **Lijsten** - eigen lijsten met kleur; taken zonder lijst staan in de inbox.
 - **Labels** - dwars door lijsten heen filteren.
 - **Taken** - omschrijving, datum, prioriteit (1-4), subtaken en labels.
 
 Projecten zitten nog niet in de UI; het schema laat ruimte om ze later boven
 lijsten te hangen.
+
+## Lijst, bord of agenda
+
+Rechtsboven op elke pagina staat **Weergave**. Dezelfde taken, drie brillen:
+
+- **Lijst** - alles onder elkaar, met kopjes per dag of per soort.
+- **Bord** - kolommen naast elkaar. Sleep een kaart naar een andere kolom en de
+  datum gaat mee; in "Geen datum" laten vallen haalt de datum er juist af.
+- **Agenda** - een hele maand in beeld, met de gekozen dag eronder uitgeschreven.
+  Slepen werkt hier ook, en taken zonder datum staan onder het raster klaar om
+  ingepland te worden.
+
+De keuze wordt per pagina onthouden (in `localStorage`, niet in de database):
+op een telefoon wil je vaak iets anders zien dan op een breed scherm. Slepen is
+trouwens muiswerk - op een touchscreen verzet je een datum via het taakvenster.
+
+Op een breed scherm openen `q` een nieuwe taak en `/` de zoekpagina, zolang je
+niet in een invoerveld staat.
 
 ## Snel koppelen met #
 

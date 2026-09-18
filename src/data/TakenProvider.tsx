@@ -16,6 +16,10 @@ interface TakenState {
   taakBijwerken: (id: string, wijziging: Partial<Task>, labelIds?: string[]) => Promise<void>
   taakAfvinken: (id: string, klaar: boolean) => Promise<void>
   taakVerwijderen: (id: string) => Promise<void>
+  /** Alleen de datum, met een meteen zichtbare verplaatsing: voor slepen. */
+  taakVerzetten: (id: string, datum: string | null) => Promise<void>
+  /** Een handvol taken in één keer naar dezelfde dag, zoals "Herplannen". */
+  takenHerplannen: (ids: string[], datum: string) => Promise<void>
 
   lijstToevoegen: (naam: string, kleur: string) => Promise<List | null>
   lijstBijwerken: (id: string, wijziging: Partial<List>) => Promise<void>
@@ -182,6 +186,35 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     [herladen],
   )
 
+  const taakVerzetten = useCallback<TakenState['taakVerzetten']>(
+    async (id, datum) => {
+      // Net als bij het vinkje: de kaart hoort onder je vinger mee te gaan,
+      // niet pas als Supabase antwoordt.
+      setRuweTaken((huidig) => huidig.map((t) => (t.id === id ? { ...t, due_date: datum } : t)))
+      const { error } = await supabase.from('tasks').update({ due_date: datum }).eq('id', id)
+      if (error) {
+        setFout(error.message)
+        await herladen()
+      }
+    },
+    [herladen],
+  )
+
+  const takenHerplannen = useCallback<TakenState['takenHerplannen']>(
+    async (ids, datum) => {
+      if (ids.length === 0) return
+      setRuweTaken((huidig) =>
+        huidig.map((t) => (ids.includes(t.id) ? { ...t, due_date: datum } : t)),
+      )
+      const { error } = await supabase.from('tasks').update({ due_date: datum }).in('id', ids)
+      if (error) {
+        setFout(error.message)
+        await herladen()
+      }
+    },
+    [herladen],
+  )
+
   const lijstToevoegen = useCallback<TakenState['lijstToevoegen']>(
     async (naam, kleur) => {
       const { data, error } = await supabase
@@ -254,6 +287,8 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     taakBijwerken,
     taakAfvinken,
     taakVerwijderen,
+    taakVerzetten,
+    takenHerplannen,
     lijstToevoegen,
     lijstBijwerken,
     lijstVerwijderen,

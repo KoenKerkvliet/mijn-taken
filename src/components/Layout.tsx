@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useOutletContext, useSearchParams } from 'react-router-dom'
+import { Outlet, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { Zijbalk } from './Zijbalk'
 import { TaakDialoog } from './TaakDialoog'
 import { Laadscherm } from './Laadscherm'
@@ -27,6 +27,7 @@ export function Layout() {
     datum?: string | null
   }>({})
   const [zoekParams, setZoekParams] = useSearchParams()
+  const navigeer = useNavigate()
 
   const schil: Schil = {
     bewerk(taak) {
@@ -40,6 +41,29 @@ export function Layout() {
       setDialoogOpen(true)
     },
   }
+
+  // Sneltoetsen zoals je ze van een takenprogramma verwacht. Alleen buiten
+  // een invoerveld, anders kun je geen "q" meer typen in een taaktitel.
+  useEffect(() => {
+    function opToets(e: KeyboardEvent) {
+      if (dialoogOpen || e.metaKey || e.ctrlKey || e.altKey) return
+      const doel = e.target as HTMLElement | null
+      if (doel?.closest('input, textarea, select, [contenteditable="true"]')) return
+
+      if (e.key === 'q') {
+        e.preventDefault()
+        setBewerkTaak(undefined)
+        setStandaarden({})
+        setDialoogOpen(true)
+      }
+      if (e.key === '/') {
+        e.preventDefault()
+        navigeer('/zoeken')
+      }
+    }
+    window.addEventListener('keydown', opToets)
+    return () => window.removeEventListener('keydown', opToets)
+  }, [navigeer, dialoogOpen])
 
   // De snelkoppeling "Nieuwe taak" van de geïnstalleerde app komt binnen als
   // ?nieuw=1. Meteen weer uit de URL halen, anders opent de dialoog opnieuw
@@ -111,16 +135,24 @@ export function Layout() {
 export function Paginakop({
   titel,
   onderschrift,
+  kleur,
   actie,
 }: {
   titel: string
   onderschrift?: string
+  /** Kleur van de lijst of het label, als stip voor de titel. */
+  kleur?: string
   actie?: React.ReactNode
 }) {
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{titel}</h1>
+      <div className="min-w-0">
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
+          {kleur && (
+            <span className="size-3 shrink-0 rounded-full" style={{ background: kleur }} />
+          )}
+          <span className="truncate">{titel}</span>
+        </h1>
         {onderschrift && <p className="mt-1 text-sm text-ink-soft">{onderschrift}</p>}
       </div>
       {actie}

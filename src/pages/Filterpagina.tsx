@@ -3,7 +3,11 @@ import { Navigate, useParams, useNavigate } from 'react-router-dom'
 import { useTaken } from '../data/TakenProvider'
 import { Paginakop, useSchil } from '../components/Layout'
 import { Sectie, TakenLijst } from '../components/TakenLijst'
+import { Taakweergave } from '../components/Taakweergave'
+import { Weergavekiezer } from '../components/Weergavekiezer'
+import { opDatumGroeperen, type Groep } from '../lib/groepen'
 import { sorteerTaken } from '../lib/sorteren'
+import { breedte, useWeergave } from '../lib/weergave'
 
 type Soort = 'inbox' | 'klaar' | 'lijst' | 'label'
 
@@ -14,6 +18,7 @@ export function Filterpagina({ soort }: { soort: Soort }) {
   const { bewerk, nieuweTaak } = useSchil()
   const [hernoemen, setHernoemen] = useState(false)
   const [nieuweNaam, setNieuweNaam] = useState('')
+  const [weergave, kiesWeergave] = useWeergave(`${soort}:${id ?? ''}`)
 
   const lijst = soort === 'lijst' ? lijsten.find((l) => l.id === id) : undefined
   const label = soort === 'label' ? labels.find((l) => l.id === id) : undefined
@@ -60,6 +65,22 @@ export function Filterpagina({ soort }: { soort: Soort }) {
           ? `${gefilterd.length} openstaand`
           : 'Alle taken met dit label.'
 
+  // In de lijst blijft het één doorlopende reeks, zoals het altijd was. Op het
+  // bord moeten er kolommen zijn, en dan is de datum de enige indeling die
+  // deze pagina heeft.
+  const groepen: Groep[] =
+    weergave === 'lijst'
+      ? [
+          {
+            sleutel: 'alles',
+            titel,
+            zonderKop: true,
+            taken: gefilterd,
+            leegTekst: 'Nog niets hier. Voeg een taak toe.',
+          },
+        ]
+      : opDatumGroeperen(gefilterd)
+
   async function naamOpslaan(e: React.FormEvent) {
     e.preventDefault()
     if (nieuweNaam.trim() && lijst) await lijstBijwerken(lijst.id, { name: nieuweNaam.trim() })
@@ -83,7 +104,7 @@ export function Filterpagina({ soort }: { soort: Soort }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 pt-6 pb-28 sm:px-6 lg:pb-16">
+    <div className={`mx-auto w-full px-4 pt-6 pb-28 sm:px-6 lg:pb-16 ${breedte(weergave)}`}>
       {hernoemen && lijst ? (
         <form onSubmit={naamOpslaan} className="mb-6">
           <input
@@ -98,8 +119,9 @@ export function Filterpagina({ soort }: { soort: Soort }) {
         <Paginakop
           titel={titel}
           onderschrift={onderschrift}
+          kleur={lijst?.color ?? label?.color}
           actie={
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {soort !== 'klaar' && (
                 <button
                   onClick={() => nieuweTaak({ lijstId: soort === 'lijst' ? id : null })}
@@ -107,6 +129,9 @@ export function Filterpagina({ soort }: { soort: Soort }) {
                 >
                   + Nieuwe taak
                 </button>
+              )}
+              {soort !== 'klaar' && (
+                <Weergavekiezer weergave={weergave} opKiezen={kiesWeergave} />
               )}
               {lijst && (
                 <button
@@ -133,15 +158,18 @@ export function Filterpagina({ soort }: { soort: Soort }) {
       )}
 
       {soort !== 'klaar' && (
-        <TakenLijst
-          taken={gefilterd}
+        <Taakweergave
+          weergave={weergave}
+          groepen={groepen}
+          agendaTaken={soort === 'lijst' ? taken.filter((t) => t.list_id === id) : gefilterd}
           opBewerken={bewerk}
+          opNieuweTaak={nieuweTaak}
           toonLijst={soort !== 'lijst'}
-          leegTekst="Nog niets hier. Voeg een taak toe."
+          lijstId={soort === 'lijst' ? (id ?? null) : null}
         />
       )}
 
-      {afgerond.length > 0 && soort !== 'inbox' && (
+      {afgerond.length > 0 && soort !== 'inbox' && weergave === 'lijst' && (
         <div className="mt-8">
           <Sectie titel="Afgerond" aantal={afgerond.length}>
             <TakenLijst taken={afgerond} opBewerken={bewerk} toonLijst={soort !== 'lijst'} />

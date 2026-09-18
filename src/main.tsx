@@ -10,6 +10,7 @@ import { Inloggen } from './pages/Inloggen'
 import { Vandaag } from './pages/Vandaag'
 import { Binnenkort } from './pages/Binnenkort'
 import { Filterpagina } from './pages/Filterpagina'
+import { Zoeken } from './pages/Zoeken'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -28,6 +29,7 @@ createRoot(document.getElementById('root')!).render(
             >
               <Route path="/" element={<Vandaag />} />
               <Route path="/binnenkort" element={<Binnenkort />} />
+              <Route path="/zoeken" element={<Zoeken />} />
               <Route path="/inbox" element={<Filterpagina soort="inbox" />} />
               <Route path="/klaar" element={<Filterpagina soort="klaar" />} />
               <Route path="/lijst/:id" element={<Filterpagina soort="lijst" />} />

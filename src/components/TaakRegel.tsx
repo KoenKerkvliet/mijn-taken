@@ -153,7 +153,7 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
   )
 }
 
-function Vinkje({
+export function Vinkje({
   aan,
   kleur,
   opKlik,
