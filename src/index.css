@@ -60,6 +60,34 @@ html, body {
   overscroll-behavior-y: none;
 }
 
+/* De schuifbalk onder het bord. Standaard is hij op Windows een joekel die
+   het bord in tweeën hakt; smal en in de lijnkleur blijft hij zichtbaar
+   genoeg om te pakken zonder de aandacht op te eisen. */
+.schuifbaan {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+.schuifbaan::-webkit-scrollbar {
+  height: 10px;
+}
+
+.schuifbaan::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.schuifbaan::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+.schuifbaan::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-faint);
+  background-clip: content-box;
+}
+
 /* Focus zichtbaar houden voor toetsenbordgebruik, maar niet bij muisklikken. */
 :focus-visible {
   outline: 2px solid var(--color-brand);

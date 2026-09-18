@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
 import type { Groep } from '../lib/groepen'
@@ -21,11 +21,40 @@ interface Props {
 export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = null }: Props) {
   const { taakVerzetten } = useTaken()
   const [boven, setBoven] = useState<string | null>(null)
+  const baan = useRef<HTMLDivElement>(null)
+
+  // Een muis heeft meestal geen wieltje opzij, en dan kom je met de hand nooit
+  // bij de laatste kolom. Rolt er verticaal iets binnen terwijl het bord nog
+  // ruimte heeft, dan schuiven we dus opzij. Aan het einde gekomen laten we
+  // het rollen weer los, anders zit de pagina eronder klem.
+  useEffect(() => {
+    const el = baan.current
+    if (!el) return
+
+    const opWiel = (e: WheelEvent) => {
+      // Een touchpad (of shift+wiel) stuurt zelf al opzij; niet in de weg zitten.
+      if (e.deltaX !== 0 || e.shiftKey) return
+      const ruimte = el.scrollWidth - el.clientWidth
+      if (ruimte <= 0) return
+      const naarRechts = e.deltaY > 0
+      if (naarRechts && el.scrollLeft >= ruimte - 1) return
+      if (!naarRechts && el.scrollLeft <= 0) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+
+    // passive: false, anders mag preventDefault niet.
+    el.addEventListener('wheel', opWiel, { passive: false })
+    return () => el.removeEventListener('wheel', opWiel)
+  }, [])
 
   return (
-    // Kolommen zijn breder dan een telefoon: horizontaal schuiven met een
-    // vangpunt per kolom, zodat je nooit half tussen twee kolommen eindigt.
-    <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6">
+    // Op een telefoon is een kolom bijna het hele scherm, dus daar schuift het
+    // bord met een vangpunt per kolom. Op een breed scherm juist niet: dan wil
+    // je vrij kunnen schuiven en passen er meer kolommen naast elkaar.
+    <div
+      ref={baan}
+      className="schuifbaan -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:snap-none sm:px-6">
       {groepen.map((groep) => {
         // `datum === undefined` betekent: deze kolom heeft geen eigen dag, dus
         // slepen zou niet weten welke datum het moest worden.
@@ -49,7 +78,7 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
               if (id) void taakVerzetten(id, groep.datum ?? null)
             }}
             className={[
-              'flex w-72 shrink-0 snap-start flex-col rounded-xl border p-2 transition',
+              'flex w-[17rem] shrink-0 snap-start flex-col rounded-xl border p-2 transition sm:w-60',
               actief ? 'border-brand bg-brand-soft' : 'border-transparent',
             ].join(' ')}
           >
