@@ -23,6 +23,19 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
   const subKlaar = taak.subtasks.filter((s) => s.completed_at).length
   const teLaat = !klaar && isAchterstallig(taak.due_date)
 
+  // Subtaken verdwijnen mee (on delete cascade). Bij een losse taak is een
+  // vraag alleen maar in de weg, maar een rij subtaken kwijtraken door één
+  // misklik op een telefoon is een ander verhaal.
+  async function verwijderen() {
+    if (taak.subtasks.length > 0) {
+      const zeker = window.confirm(
+        `"${taak.title}" verwijderen? De ${taak.subtasks.length} subtaken gaan mee.`,
+      )
+      if (!zeker) return
+    }
+    await taakVerwijderen(taak.id)
+  }
+
   async function subToevoegen(e: React.FormEvent) {
     e.preventDefault()
     if (!nieuweSub.trim()) return
@@ -75,18 +88,22 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+        {/* Op een telefoon bestaat hover niet, dus daar staan de knoppen er
+            gewoon. Pas op een breed scherm verschijnen ze bij het aanwijzen. */}
+        <div className="flex shrink-0 items-center gap-1 transition focus-within:opacity-100 lg:opacity-0 lg:group-hover:opacity-100">
           <button
             onClick={() => setSubOpen((v) => !v)}
             title="Subtaken"
-            className="grid size-7 place-items-center rounded-md text-ink-faint transition hover:bg-surface-muted hover:text-ink"
+            aria-label="Subtaken tonen"
+            className="grid size-9 place-items-center rounded-md text-ink-faint transition hover:bg-surface-muted hover:text-ink lg:size-7"
           >
             ⌄
           </button>
           <button
-            onClick={() => void taakVerwijderen(taak.id)}
+            onClick={() => void verwijderen()}
             title="Verwijderen"
-            className="grid size-7 place-items-center rounded-md text-ink-faint transition hover:bg-danger/10 hover:text-danger"
+            aria-label="Taak verwijderen"
+            className="grid size-9 place-items-center rounded-md text-ink-faint transition hover:bg-danger/10 hover:text-danger lg:size-7"
           >
             ×
           </button>
@@ -113,7 +130,8 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
               </span>
               <button
                 onClick={() => void taakVerwijderen(s.id)}
-                className="text-ink-faint opacity-0 transition group-hover/sub:opacity-100 hover:text-danger"
+                aria-label="Subtaak verwijderen"
+                className="grid size-8 shrink-0 place-items-center rounded-md text-ink-faint transition hover:text-danger lg:size-6 lg:opacity-0 lg:group-hover/sub:opacity-100"
               >
                 ×
               </button>
@@ -126,7 +144,7 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
               value={nieuweSub}
               onChange={(e) => setNieuweSub(e.target.value)}
               placeholder="Subtaak toevoegen…"
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-faint"
+              className="min-w-0 flex-1 bg-transparent py-1.5 text-base outline-none placeholder:text-ink-faint sm:text-sm"
             />
           </form>
         </div>
@@ -148,13 +166,17 @@ function Vinkje({
 }) {
   const maat = klein ? 'size-[18px]' : 'size-5'
   return (
+    // Het rondje blijft 20 pixels, maar het gebied waar je op kunt tikken
+    // groeit er met een pseudo-element 8 pixels omheen. Met marges zou de
+    // hele regel verschuiven; zo blijft de uitlijning precies gelijk.
     <button
       onClick={opKlik}
       aria-pressed={aan}
       aria-label={aan ? 'Markeren als open' : 'Markeren als klaar'}
       className={[
         maat,
-        'mt-0.5 grid shrink-0 place-items-center rounded-full border-2 transition',
+        'relative mt-0.5 grid shrink-0 place-items-center rounded-full border-2 transition',
+        "after:absolute after:-inset-2 after:content-['']",
       ].join(' ')}
       style={{ borderColor: kleur, background: aan ? kleur : 'transparent' }}
     >

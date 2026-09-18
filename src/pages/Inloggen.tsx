@@ -35,7 +35,7 @@ export function Inloggen() {
   }
 
   return (
-    <div className="grid min-h-full lg:grid-cols-[1.1fr_1fr]">
+    <div className="grid min-h-[100dvh] lg:grid-cols-[1.1fr_1fr]">
       {/* Linkerkant: alleen sfeer, verdwijnt op smalle schermen. */}
       <div className="relative hidden overflow-hidden bg-brand lg:block">
         <div
@@ -67,7 +67,7 @@ export function Inloggen() {
       </div>
 
       {/* Rechterkant: het formulier. */}
-      <div className="flex items-center justify-center bg-canvas px-6 py-14">
+      <div className="flex items-center justify-center bg-canvas px-5 py-14 pt-[max(3.5rem,env(safe-area-inset-top))] pb-[max(3.5rem,env(safe-area-inset-bottom))] sm:px-6">
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
             <span className="grid size-11 place-items-center rounded-xl bg-brand text-lg font-semibold text-white">
@@ -90,7 +90,7 @@ export function Inloggen() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                className="w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-base outline-none transition focus:border-brand sm:text-sm focus:ring-2 focus:ring-brand/20"
                 placeholder="jij@voorbeeld.nl"
               />
             </div>
@@ -106,7 +106,7 @@ export function Inloggen() {
                 required
                 value={wachtwoord}
                 onChange={(e) => setWachtwoord(e.target.value)}
-                className="w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                className="w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-base outline-none transition focus:border-brand sm:text-sm focus:ring-2 focus:ring-brand/20"
                 placeholder="••••••••"
               />
             </div>

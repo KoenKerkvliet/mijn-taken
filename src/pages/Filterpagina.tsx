@@ -83,7 +83,7 @@ export function Filterpagina({ soort }: { soort: Soort }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 pt-6 pb-16">
+    <div className="mx-auto w-full max-w-4xl px-4 pt-6 pb-28 sm:px-6 lg:pb-16">
       {hernoemen && lijst ? (
         <form onSubmit={naamOpslaan} className="mb-6">
           <input
@@ -99,7 +99,7 @@ export function Filterpagina({ soort }: { soort: Soort }) {
           titel={titel}
           onderschrift={onderschrift}
           actie={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {soort !== 'klaar' && (
                 <button
                   onClick={() => nieuweTaak({ lijstId: soort === 'lijst' ? id : null })}

@@ -3,11 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { useTaken } from '../data/TakenProvider'
 import { isAchterstallig, vandaag } from '../lib/dates'
-
-const LIJSTKLEUREN = [
-  '#4f46e5', '#0ea5e9', '#10b981', '#f59e0b',
-  '#ef4444', '#ec4899', '#8b5cf6', '#64748b',
-]
+import { volgendeKleur } from '../lib/kleuren'
 
 interface Props {
   opNieuweTaak: () => void
@@ -38,8 +34,7 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
   async function lijstOpslaan(e: React.FormEvent) {
     e.preventDefault()
     if (!nieuweLijst.trim()) return
-    const kleur = LIJSTKLEUREN[lijsten.length % LIJSTKLEUREN.length]
-    await lijstToevoegen(nieuweLijst, kleur)
+    await lijstToevoegen(nieuweLijst, volgendeKleur(lijsten.length))
     setNieuweLijst('')
     setLijstOpen(false)
   }
@@ -47,7 +42,7 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
   async function labelOpslaan(e: React.FormEvent) {
     e.preventDefault()
     if (!nieuwLabel.trim()) return
-    await labelToevoegen(nieuwLabel, LIJSTKLEUREN[(labels.length + 3) % LIJSTKLEUREN.length])
+    await labelToevoegen(nieuwLabel, volgendeKleur(labels.length + 3))
     setNieuwLabel('')
     setLabelOpen(false)
   }
@@ -64,8 +59,9 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
 
       <aside
         className={[
-          'fixed inset-y-0 left-0 z-30 flex w-72 shrink-0 flex-col border-r border-line bg-surface',
-          'transition-transform lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-30 flex w-72 max-w-[85vw] shrink-0 flex-col border-r border-line bg-surface',
+          'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]',
+          'transition-transform lg:static lg:max-w-none lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
       >
@@ -73,7 +69,14 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
           <span className="grid size-9 place-items-center rounded-xl bg-brand text-sm font-bold text-white">
             ✓
           </span>
-          <span className="font-semibold tracking-tight">Mijn taken</span>
+          <span className="flex-1 font-semibold tracking-tight">Mijn taken</span>
+          <button
+            onClick={opSluiten}
+            aria-label="Menu sluiten"
+            className="-mr-2 grid size-10 place-items-center rounded-lg text-xl text-ink-faint transition active:bg-surface-muted lg:hidden"
+          >
+            ×
+          </button>
         </div>
 
         <div className="px-4 pb-4">
@@ -85,7 +88,14 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-4">
+        {/* Eén handler voor alle links: op mobiel ligt de zijbalk over de
+            pagina heen, dus na het kiezen van een lijst moet hij dicht. */}
+        <nav
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('a')) opSluiten()
+          }}
+          className="flex-1 overflow-y-auto px-3 pb-4"
+        >
           <ul className="space-y-0.5">
             <Item to="/" label="Vandaag" icoon="☀️" aantal={aantalVandaag} nadruk={aantalTeLaat > 0} />
             <Item to="/binnenkort" label="Binnenkort" icoon="🗓️" />
@@ -106,7 +116,7 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
                 onChange={(e) => setNieuweLijst(e.target.value)}
                 onBlur={() => !nieuweLijst && setLijstOpen(false)}
                 placeholder="Naam van de lijst"
-                className="w-full rounded-md border border-line bg-canvas px-2.5 py-1.5 text-sm outline-none focus:border-brand"
+                className="w-full rounded-md border border-line bg-canvas px-2.5 py-2 text-base outline-none focus:border-brand lg:py-1.5 lg:text-sm"
               />
             </form>
           )}
@@ -140,7 +150,7 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
                 onChange={(e) => setNieuwLabel(e.target.value)}
                 onBlur={() => !nieuwLabel && setLabelOpen(false)}
                 placeholder="Naam van het label"
-                className="w-full rounded-md border border-line bg-canvas px-2.5 py-1.5 text-sm outline-none focus:border-brand"
+                className="w-full rounded-md border border-line bg-canvas px-2.5 py-2 text-base outline-none focus:border-brand lg:py-1.5 lg:text-sm"
               />
             </form>
           )}
@@ -179,7 +189,7 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
 
 function regelKlassen(actief: boolean) {
   return [
-    'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition',
+    'flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition lg:py-2',
     actief ? 'bg-brand-soft font-medium text-brand' : 'text-ink-soft hover:bg-surface-muted',
   ].join(' ')
 }
@@ -228,7 +238,7 @@ function Kop({
         onClick={opToevoegen}
         aria-label={`${titel} toevoegen`}
         className={[
-          'grid size-5 place-items-center rounded transition hover:bg-surface-muted',
+          'grid size-8 place-items-center rounded transition hover:bg-surface-muted lg:size-5',
           actief ? 'text-brand' : 'text-ink-faint',
         ].join(' ')}
       >

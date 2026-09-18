@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { Priority, TaskWithMeta } from '../lib/types'
 import { overDagen, vandaag } from '../lib/dates'
+import { leesTags } from '../lib/tags'
+import { volgendeKleur } from '../lib/kleuren'
 
 export const PRIORITEITEN: { waarde: Priority; naam: string; kleur: string }[] = [
   { waarde: 1, naam: 'Urgent', kleur: '#dc2626' },
@@ -10,6 +12,10 @@ export const PRIORITEITEN: { waarde: Priority; naam: string; kleur: string }[] =
   { waarde: 3, naam: 'Normaal', kleur: '#2563eb' },
   { waarde: 4, naam: 'Laag', kleur: '#94a3b8' },
 ]
+
+/** 16px op mobiel, want onder die grens zoomt Safari bij het focussen in. */
+const VELD =
+  'rounded-lg border border-line bg-canvas px-2.5 py-2 text-base outline-none focus:border-brand sm:py-1.5 sm:text-sm'
 
 interface Props {
   open: boolean
@@ -21,7 +27,7 @@ interface Props {
 }
 
 export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDatum }: Props) {
-  const { lijsten, labels, taakToevoegen, taakBijwerken } = useTaken()
+  const { lijsten, labels, taakToevoegen, taakBijwerken, lijstToevoegen } = useTaken()
   const [titel, setTitel] = useState('')
   const [omschrijving, setOmschrijving] = useState('')
   const [datum, setDatum] = useState('')
@@ -29,6 +35,10 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [lijstId, setLijstId] = useState<string>('')
   const [gekozenLabels, setGekozenLabels] = useState<string[]>([])
   const [bezig, setBezig] = useState(false)
+
+  // Wat er met "#klas" in de titel gaat gebeuren. Live, zodat je het ziet
+  // voordat je opslaat in plaats van erna.
+  const tags = useMemo(() => leesTags(titel, lijsten, labels), [titel, lijsten, labels])
 
   // Bij openen het formulier vullen met de taak (of met de standaarden van de
   // pagina waar je vandaan komt).
@@ -56,19 +66,23 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
 
   async function opslaan(e: FormEvent) {
     e.preventDefault()
-    if (!titel.trim()) return
+    if (!tags.titel.trim()) return
     setBezig(true)
 
+    // Een tag in de titel wint van de keuzelijst: die heb je net getypt, de
+    // keuzelijst stond er misschien al vanaf het openen.
     const velden = {
-      title: titel.trim(),
+      title: tags.titel,
       description: omschrijving.trim() || null,
       due_date: datum || null,
       priority: prioriteit,
-      list_id: lijstId || null,
+      list_id: tags.lijst ? tags.lijst.id : lijstId || null,
     }
 
-    if (taak) await taakBijwerken(taak.id, velden, gekozenLabels)
-    else await taakToevoegen({ ...velden, labelIds: gekozenLabels })
+    const alleLabels = [...new Set([...gekozenLabels, ...tags.labels.map((l) => l.id)])]
+
+    if (taak) await taakBijwerken(taak.id, velden, alleLabels)
+    else await taakToevoegen({ ...velden, labelIds: alleLabels })
 
     setBezig(false)
     opSluiten()
@@ -80,20 +94,30 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     )
   }
 
+  async function lijstMakenVoor(naam: string) {
+    const nieuw = await lijstToevoegen(naam, volgendeKleur(lijsten.length))
+    // De tag in de titel vindt de lijst hierna vanzelf; dit is alleen voor het
+    // geval de naam net anders geschreven is dan de tag.
+    if (nieuw) setLijstId(nieuw.id)
+  }
+
+  const gekoppeldViaTag = tags.lijst !== null || tags.labels.length > 0
+  const kanOpslaan = tags.titel.trim().length > 0 && !bezig
+
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-[10vh]">
+    <div className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto bg-black/40 sm:items-start sm:p-4 sm:pt-[10vh]">
       <button aria-label="Sluiten" className="fixed inset-0 -z-10" onClick={opSluiten} />
 
       <form
         onSubmit={opslaan}
-        className="w-full max-w-xl rounded-2xl border border-line bg-surface shadow-2xl"
+        className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-line bg-surface shadow-2xl sm:rounded-2xl"
       >
         <div className="p-5">
           <input
             autoFocus
             value={titel}
             onChange={(e) => setTitel(e.target.value)}
-            placeholder="Wat moet er gebeuren?"
+            placeholder="Wat moet er gebeuren? Tip: #lijstnaam"
             className="w-full bg-transparent text-lg font-medium outline-none placeholder:text-ink-faint"
           />
           <textarea
@@ -101,15 +125,48 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             onChange={(e) => setOmschrijving(e.target.value)}
             placeholder="Omschrijving (optioneel)"
             rows={2}
-            className="mt-2 w-full resize-none bg-transparent text-sm outline-none placeholder:text-ink-faint"
+            className="mt-2 w-full resize-none bg-transparent text-base outline-none placeholder:text-ink-faint sm:text-sm"
           />
+
+          {(gekoppeldViaTag || tags.onbekend.length > 0) && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-xs">
+              {gekoppeldViaTag && (
+                <span className="text-ink-soft">
+                  Wordt opgeslagen als <span className="font-medium text-ink">{tags.titel}</span>
+                </span>
+              )}
+              {tags.lijst && (
+                <span
+                  className="rounded-full px-2 py-0.5 font-medium text-white"
+                  style={{ background: tags.lijst.color }}
+                >
+                  {tags.lijst.name}
+                </span>
+              )}
+              {tags.labels.map((lb) => (
+                <span key={lb.id} className="font-medium" style={{ color: lb.color }}>
+                  #{lb.name}
+                </span>
+              ))}
+              {tags.onbekend.map((naam) => (
+                <button
+                  key={naam}
+                  type="button"
+                  onClick={() => void lijstMakenVoor(naam)}
+                  className="rounded-full border border-dashed border-line px-2 py-0.5 text-ink-soft transition hover:border-brand hover:text-brand"
+                >
+                  Lijst "{naam}" maken
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <input
               type="date"
               value={datum}
               onChange={(e) => setDatum(e.target.value)}
-              className="rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-sm outline-none focus:border-brand"
+              className={VELD}
             />
             <SnelleDatum label="Vandaag" opKlik={() => setDatum(vandaag())} />
             <SnelleDatum label="Morgen" opKlik={() => setDatum(overDagen(1))} />
@@ -121,7 +178,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             <select
               value={prioriteit}
               onChange={(e) => setPrioriteit(Number(e.target.value) as Priority)}
-              className="rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-sm outline-none focus:border-brand"
+              className={VELD}
             >
               {PRIORITEITEN.map((p) => (
                 <option key={p.waarde} value={p.waarde}>
@@ -131,9 +188,11 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             </select>
 
             <select
-              value={lijstId}
+              value={tags.lijst ? tags.lijst.id : lijstId}
               onChange={(e) => setLijstId(e.target.value)}
-              className="rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-sm outline-none focus:border-brand"
+              disabled={tags.lijst !== null}
+              title={tags.lijst ? `Vastgezet door #${tags.lijst.name} in de titel` : undefined}
+              className={`${VELD} disabled:opacity-60`}
             >
               <option value="">Inbox (geen lijst)</option>
               {lijsten.map((l) => (
@@ -147,14 +206,14 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
           {labels.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {labels.map((lb) => {
-                const aan = gekozenLabels.includes(lb.id)
+                const aan = gekozenLabels.includes(lb.id) || tags.labels.some((t) => t.id === lb.id)
                 return (
                   <button
                     key={lb.id}
                     type="button"
                     onClick={() => labelWisselen(lb.id)}
                     className={[
-                      'rounded-full border px-2.5 py-1 text-xs transition',
+                      'rounded-full border px-3 py-1.5 text-xs transition sm:py-1',
                       aan ? 'border-transparent text-white' : 'border-line text-ink-soft',
                     ].join(' ')}
                     style={aan ? { background: lb.color } : undefined}
@@ -167,18 +226,18 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-line px-5 py-3">
+        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
           <button
             type="button"
             onClick={opSluiten}
-            className="rounded-lg px-3.5 py-2 text-sm text-ink-soft transition hover:bg-surface-muted"
+            className="rounded-lg px-4 py-2.5 text-sm text-ink-soft transition hover:bg-surface-muted sm:py-2"
           >
             Annuleren
           </button>
           <button
             type="submit"
-            disabled={!titel.trim() || bezig}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+            disabled={!kanOpslaan}
+            className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 sm:py-2"
           >
             {taak ? 'Opslaan' : 'Taak toevoegen'}
           </button>
@@ -193,7 +252,7 @@ function SnelleDatum({ label, opKlik }: { label: string; opKlik: () => void }) {
     <button
       type="button"
       onClick={opKlik}
-      className="rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink-soft transition hover:border-brand hover:text-brand"
+      className="rounded-lg border border-line px-2.5 py-2 text-xs text-ink-soft transition hover:border-brand hover:text-brand sm:py-1.5"
     >
       {label}
     </button>

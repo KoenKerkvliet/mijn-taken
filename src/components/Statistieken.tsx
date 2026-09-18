@@ -12,7 +12,7 @@ export function Statistieken({ taken }: { taken: TaskWithMeta[] }) {
     // Afgerond per dag van deze week. completed_at is een moment; voor de
     // telling gaat het om de lokale dag waarop je het vinkje zette.
     const weekstart = startVanDeWeek()
-    const perDag = new Array(7).fill(0) as number[]
+    const perDag = Array.from({ length: 7 }, () => 0)
     let dezeWeek = 0
     let vandaagKlaar = 0
 
@@ -41,12 +41,12 @@ export function Statistieken({ taken }: { taken: TaskWithMeta[] }) {
   const dagVanVandaag = (new Date().getDay() + 6) % 7
 
   return (
-    <div className="mb-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="mb-8 grid grid-cols-2 gap-3 xl:grid-cols-4">
       <Tegel label="Openstaand" waarde={cijfers.open} />
       <Tegel label="Achterstallig" waarde={cijfers.teLaat} alarm={cijfers.teLaat > 0} />
       <Tegel label="Vandaag afgerond" waarde={cijfers.vandaagKlaar} />
 
-      <div className="rounded-xl border border-line bg-surface p-4 sm:col-span-2 xl:col-span-1">
+      <div className="col-span-2 rounded-xl border border-line bg-surface p-4 xl:col-span-1">
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-medium text-ink-soft">Afgerond deze week</span>
           <span className="text-lg font-semibold tabular-nums">{cijfers.dezeWeek}</span>

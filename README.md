@@ -1,7 +1,8 @@
 # Mijn taken
 
 Persoonlijk taakprogramma: React + Vite + TypeScript + Tailwind, met Supabase
-voor inloggen en opslag. Draait als statische site op GitHub Pages.
+voor inloggen en opslag. Draait als statische site op GitHub Pages en is te
+installeren als app op je telefoon.
 
 Registreren kan niet. Accounts worden met de hand aangemaakt in het Supabase-
 dashboard; de startpagina is alleen een inlogscherm.
@@ -17,6 +18,40 @@ dashboard; de startpagina is alleen een inlogscherm.
 
 Projecten zitten nog niet in de UI; het schema laat ruimte om ze later boven
 lijsten te hangen.
+
+## Snel koppelen met #
+
+Typ je `Verslagen uitwerken #klas`, dan komt de taak in de lijst *Klas* te
+staan en heet hij gewoon *Verslagen uitwerken*. De tag mag overal in de titel
+staan.
+
+- Hoofdletters, accenten en spaties maken niet uit: `#werkschool` vindt ook de
+  lijst "Werk & school".
+- Is er geen lijst met die naam, dan wordt er in de **labels** gezocht. De
+  zijbalk toont labels al als `#naam`, dus dat is de enige andere zinnige
+  uitleg van een `#`.
+- Slaat een tag nergens op, dan blijft hij gewoon in de titel staan. Er wordt
+  niet vanzelf een lijst aangemaakt - bij één tikfout zit je anders met een
+  lijst "#klsa". In het venster staat wel een knop om de lijst alsnog te maken.
+- Een `#lijst` in de titel gaat voor op de keuzelijst eronder; die staat dan
+  op slot. Onder het titelveld zie je live wat er opgeslagen gaat worden.
+- Een `#` midden in een woord telt niet mee, dus `C#-cursus` blijft heel.
+
+## Installeren als app
+
+De site is een PWA: op Android geeft Chrome "toevoegen aan startscherm", op
+iOS doe je dat via Deel -> Zet op beginscherm. Daarna opent de app zonder
+adresbalk, met een eigen icoon en twee snelkoppelingen (nieuwe taak,
+binnenkort) onder een lange druk op het icoon.
+
+De service worker bewaart alleen de schil van de app - html, css, javascript
+en iconen. Taken komen altijd vers van Supabase. Zonder verbinding opent de
+app dus wel, maar zie je geen taken; een afgevinkte taak die uit een cache
+terugkomt is vervelender dan een eerlijke foutmelding.
+
+De iconen in `public/` komen uit `scripts/maak-iconen.mjs`, dat dezelfde vorm
+tekent als `favicon.svg`. Kleur veranderd? Dan `node scripts/maak-iconen.mjs`
+draaien.
 
 ## Eenmalig instellen
 
@@ -45,6 +80,9 @@ npm install
 npm run dev
 ```
 
+In `npm run dev` staat de service worker uit - die zit bij het herladen alleen
+maar in de weg. De PWA test je met `npm run build && npm run preview`.
+
 ## Deploy
 
 Elke push naar `main` bouwt en publiceert via
@@ -53,8 +91,10 @@ Elke push naar `main` bouwt en publiceert via
 404 op GitHub Pages.
 
 Staat de site op een subpad (`gebruiker.github.io/mijn-taken`), dan moet
-`base` in `vite.config.ts` gelijk zijn aan dat subpad. Bij een eigen domein
-wordt dat `'/'`.
+`BASIS` in `vite.config.ts` gelijk zijn aan dat subpad. Bij een eigen domein
+wordt dat `'/'`. Die ene constante voedt ook `start_url` en `scope` van het
+manifest; staan die naast elkaar verkeerd, dan weigert de browser de app te
+installeren.
 
 ## Beveiliging
 

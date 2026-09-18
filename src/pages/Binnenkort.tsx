@@ -18,7 +18,7 @@ export function Binnenkort() {
   const zonderDatum = sorteerTaken(open.filter((t) => t.due_date === null))
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 pt-6 pb-16">
+    <div className="mx-auto w-full max-w-4xl px-4 pt-6 pb-28 sm:px-6 lg:pb-16">
       <Paginakop
         titel="Binnenkort"
         onderschrift="De komende zeven dagen, dag voor dag."

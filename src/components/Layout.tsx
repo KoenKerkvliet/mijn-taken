@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Outlet, useOutletContext } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Outlet, useOutletContext, useSearchParams } from 'react-router-dom'
 import { Zijbalk } from './Zijbalk'
 import { TaakDialoog } from './TaakDialoog'
 import { Laadscherm } from './Laadscherm'
@@ -26,6 +26,7 @@ export function Layout() {
     lijstId?: string | null
     datum?: string | null
   }>({})
+  const [zoekParams, setZoekParams] = useSearchParams()
 
   const schil: Schil = {
     bewerk(taak) {
@@ -40,8 +41,22 @@ export function Layout() {
     },
   }
 
+  // De snelkoppeling "Nieuwe taak" van de geïnstalleerde app komt binnen als
+  // ?nieuw=1. Meteen weer uit de URL halen, anders opent de dialoog opnieuw
+  // zodra je terugnavigeert.
+  useEffect(() => {
+    if (zoekParams.get('nieuw') === null) return
+    setBewerkTaak(undefined)
+    setStandaarden({})
+    setDialoogOpen(true)
+    zoekParams.delete('nieuw')
+    setZoekParams(zoekParams, { replace: true })
+  }, [zoekParams, setZoekParams])
+
   return (
-    <div className="flex h-full">
+    // 100dvh in plaats van 100%: op mobiel krimpt het scherm als de
+    // adresbalk verschijnt, en dan valt de onderkant anders weg.
+    <div className="flex h-[100dvh]">
       <Zijbalk
         open={menuOpen}
         opSluiten={() => setMenuOpen(false)}
@@ -52,21 +67,35 @@ export function Layout() {
       />
 
       <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <button
-          onClick={() => setMenuOpen(true)}
-          className="m-4 w-fit rounded-lg border border-line bg-surface px-3 py-2 text-sm lg:hidden"
-        >
-          ☰ Menu
-        </button>
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-line bg-canvas/90 px-4 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
+          <button
+            onClick={() => setMenuOpen(true)}
+            aria-label="Menu openen"
+            className="-ml-2 grid size-11 place-items-center rounded-lg text-xl text-ink-soft transition active:bg-surface-muted"
+          >
+            ☰
+          </button>
+          <span className="font-semibold tracking-tight">Mijn taken</span>
+        </header>
 
         {fout && (
-          <p className="mx-6 mt-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-2.5 text-sm text-danger">
+          <p className="mx-4 mt-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-2.5 text-sm text-danger sm:mx-6">
             {fout}
           </p>
         )}
 
         {bezigMetLaden ? <Laadscherm /> : <Outlet context={schil} />}
       </main>
+
+      {/* Duimbereik: op een telefoon is de knop rechtsboven in de pagina net
+          te ver weg om er snel een taak in te gooien. */}
+      <button
+        onClick={() => schil.nieuweTaak()}
+        aria-label="Nieuwe taak"
+        className="fixed right-5 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-20 grid size-14 place-items-center rounded-full bg-brand text-2xl leading-none text-white shadow-lg transition active:scale-95 lg:hidden"
+      >
+        +
+      </button>
 
       <TaakDialoog
         open={dialoogOpen}
