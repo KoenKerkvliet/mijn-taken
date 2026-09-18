@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { Priority, TaskWithMeta } from '../lib/types'
@@ -30,6 +30,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [lijstId, setLijstId] = useState<string>('')
   const [gekozenLabels, setGekozenLabels] = useState<string[]>([])
   const [bezig, setBezig] = useState(false)
+  const omschrijvingVeld = useRef<HTMLTextAreaElement>(null)
 
   // Wat er met "#klas", "volgende week donderdag" en "p1" in de titel gaat
   // gebeuren. Live, zodat je het ziet voordat je opslaat in plaats van erna.
@@ -51,6 +52,17 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     setGekozenLabels(taak?.labelIds ?? [])
     setBezig(false)
   }, [open, taak, standaardLijst, standaardDatum])
+
+  // Een omschrijving van tien regels in een venstertje van twee is niet te
+  // lezen. Het veld groeit daarom mee met wat erin staat, tot het bijna een
+  // half scherm vult; daarna schuift het van binnen en blijven de knoppen
+  // eronder bereikbaar.
+  useLayoutEffect(() => {
+    const el = omschrijvingVeld.current
+    if (!open || !el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [open, omschrijving])
 
   useEffect(() => {
     if (!open) return
@@ -115,7 +127,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
 
       <form
         onSubmit={opslaan}
-        className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-line bg-surface shadow-2xl sm:rounded-2xl"
+        className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface shadow-2xl sm:rounded-2xl"
       >
         <div className="p-5">
           <Titelveld
@@ -125,11 +137,12 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             placeholder="Wat moet er gebeuren? Bijv. Verslagen nakijken vrijdag p2 #klas"
           />
           <textarea
+            ref={omschrijvingVeld}
             value={omschrijving}
             onChange={(e) => setOmschrijving(e.target.value)}
             placeholder="Omschrijving (optioneel)"
             rows={2}
-            className="mt-2 w-full resize-none bg-transparent text-base outline-none placeholder:text-ink-faint sm:text-sm"
+            className="mt-2 max-h-[45dvh] w-full resize-none overflow-y-auto bg-transparent text-base leading-relaxed outline-none placeholder:text-ink-faint sm:text-sm"
           />
 
           {(uitTitel || gelezen.onbekend.length > 0) && (
