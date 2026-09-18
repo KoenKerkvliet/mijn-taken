@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { useTaken } from '../data/TakenProvider'
 import { isAchterstallig, vandaag } from '../lib/dates'
@@ -16,7 +16,8 @@ interface Props {
 }
 
 export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
-  const { session, uitloggen } = useAuth()
+  const { session, naam, uitloggen } = useAuth()
+  const navigeer = useNavigate()
   const { lijsten, gearchiveerdeLijsten, labels, taken, lijstToevoegen, labelToevoegen } =
     useTaken()
   const [nieuweLijst, setNieuweLijst] = useState('')
@@ -37,8 +38,14 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
   const aantalTeLaat = open_taken.filter((t) => isAchterstallig(t.due_date)).length
 
   const email = session?.user.email ?? ''
-  const naam = email.split('@')[0] ?? ''
-  const initialen = naam.slice(0, 2).toUpperCase() || '?'
+  // Twee letters: van een naam met een spatie de beginletters, anders de
+  // eerste twee tekens. "Koen Kerkvliet" wordt KK, "koen" wordt KO.
+  const delen = naam.trim().split(/\s+/u)
+  const initialen =
+    (delen.length > 1
+      ? delen[0][0] + delen[delen.length - 1][0]
+      : naam.slice(0, 2)
+    ).toUpperCase() || '?'
 
   function perLijst(id: string) {
     return open_taken.filter((t) => t.list_id === id).length
@@ -114,10 +121,20 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
                   {email}
                 </p>
                 <button
-                  onClick={() => void uitloggen()}
-                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink-soft transition hover:bg-surface-muted hover:text-danger"
+                  onClick={() => {
+                    setProfielOpen(false)
+                    opSluiten()
+                    navigeer('/instellingen')
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink-soft transition hover:bg-surface-muted hover:text-ink"
                 >
-                  Uitloggen
+                  <span className="w-4 text-center text-xs">⚙</span> Instellingen
+                </button>
+                <button
+                  onClick={() => void uitloggen()}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink-soft transition hover:bg-surface-muted hover:text-danger"
+                >
+                  <span className="w-4 text-center text-xs">⏻</span> Uitloggen
                 </button>
               </div>
             </>

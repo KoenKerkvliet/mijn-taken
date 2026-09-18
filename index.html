@@ -23,6 +23,18 @@
     <meta name="mobile-web-app-capable" content="yes" />
 
     <title>Mijn taken</title>
+
+    <!-- Het thema wordt hier al gezet, voordat er iets getekend is. Deden we
+         dat pas in React, dan flitst een donkere app eerst wit op. -->
+    <script>
+      try {
+        var t = localStorage.getItem('mijn-taken:thema')
+        document.documentElement.dataset.thema =
+          t === 'licht' || t === 'donker' ? t : 'systeem'
+      } catch (e) {
+        document.documentElement.dataset.thema = 'systeem'
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

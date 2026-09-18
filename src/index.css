@@ -1,7 +1,12 @@
 @import 'tailwindcss';
 
 /* Eén set kleuren voor licht en donker. De app gebruikt alleen deze tokens,
-   zodat een themawissel nooit half doorwerkt. */
+   zodat een themawissel nooit half doorwerkt.
+ *
+ * Het thema hangt aan data-thema op <html>: 'systeem' volgt de instelling van
+ * je computer, 'licht' en 'donker' zetten hem vast. Zie lib/thema.ts, en het
+ * scriptje in index.html dat het zet voordat er iets getekend wordt - anders
+ * flitst een donkere app eerst wit op. */
 @theme {
   --color-canvas: #f6f7fb;
   --color-surface: #ffffff;
@@ -17,12 +22,32 @@
   --color-success: #15803d;
 }
 
-:root {
-  color-scheme: light dark;
+/* De donkere waarden staan twee keer: vastgezet, en voor wie het systeem
+   volgt. Dat is de prijs van een media query - hij kan niet met een gewone
+   selector op één hoop. */
+:root[data-thema='licht'] {
+  color-scheme: light;
+}
+
+:root[data-thema='donker'] {
+  color-scheme: dark;
+  --color-canvas: #0d0f16;
+  --color-surface: #151824;
+  --color-surface-muted: #1c2030;
+  --color-line: #262b3c;
+  --color-ink: #eef0f6;
+  --color-ink-soft: #a3a9bd;
+  --color-ink-faint: #767d94;
+  --color-brand: #7c73ff;
+  --color-brand-soft: #1e2140;
+  --color-danger: #f87171;
+  --color-warning: #fbbf24;
+  --color-success: #4ade80;
 }
 
 @media (prefers-color-scheme: dark) {
-  @theme {
+  :root[data-thema='systeem'] {
+    color-scheme: dark;
     --color-canvas: #0d0f16;
     --color-surface: #151824;
     --color-surface-muted: #1c2030;

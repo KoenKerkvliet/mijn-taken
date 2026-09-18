@@ -29,6 +29,24 @@ dashboard; de startpagina is alleen een inlogscherm.
 Projecten zitten nog niet in de UI; het schema laat ruimte om ze later boven
 lijsten te hangen.
 
+## Instellingen
+
+Onder je naam bovenaan de zijbalk zit **Instellingen**, met twee tabbladen:
+
+- **Algemeen** - je naam (die staat daarna bovenaan de zijbalk in plaats van
+  het begin van je e-mailadres) en je wachtwoord. Voor een nieuw wachtwoord
+  moet je eerst je huidige invullen. Supabase vraagt daar niet om, maar zonder
+  die controle kan iedereen die even bij een open laptop komt het wachtwoord
+  veranderen. Het e-mailadres zelf is er niet te wijzigen.
+- **Uiterlijk** - thema: systeem, licht of donker.
+
+De naam staat in `user_metadata` van je account, niet in een eigen tabel: het
+is één veld, en zo blijft het schema zoals het is. Het thema staat juist in
+`localStorage`, dus per apparaat - op een telefoon in de zon wil je vaak iets
+anders dan 's avonds achter een monitor. Het wordt gezet door een klein script
+in `index.html`, voordat er iets getekend wordt; anders flitst een donkere app
+eerst wit op.
+
 ## Lijst, bord of agenda
 
 Rechtsboven op elke pagina staat **Weergave**. Dezelfde taken, drie brillen:
