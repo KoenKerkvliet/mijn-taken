@@ -1,0 +1,7 @@
+# De MCP-functie moet zonder Supabase-token bereikbaar zijn: Claude stuurt zijn
+# eigen sleutel mee (zie functions/mcp/index.ts), niet die van Supabase. Zonder
+# deze regel weigert de poort het verzoek al voordat de functie iets ziet.
+project_id = "mijn-taken"
+
+[functions.mcp]
+verify_jwt = false

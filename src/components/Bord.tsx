@@ -248,10 +248,18 @@ function Kaart({
               🗓️ {toonDatum(taak.due_date)}
             </span>
           )}
+          {/* Op een kaart is geen ruimte om subtaken uit te klappen; dit
+              brengt je naar het venster waar ze staan. Een kaart zonder
+              subtaken krijgt geen "0/0": daar klik je gewoon de kaart voor
+              aan. */}
           {taak.subtasks.length > 0 && (
-            <span className="text-ink-soft">
+            <button
+              onClick={() => opBewerken(taak)}
+              title="Subtaken"
+              className="text-ink-soft transition hover:text-brand"
+            >
               ☑ {subKlaar}/{taak.subtasks.length}
-            </span>
+            </button>
           )}
           {toonLijst && lijst && (
             <span className="flex items-center gap-1 text-ink-soft">

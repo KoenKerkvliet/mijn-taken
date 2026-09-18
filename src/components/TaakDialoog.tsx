@@ -7,6 +7,7 @@ import { leesTitel, letterlijk } from '../lib/titel'
 import { PRIORITEITEN } from '../lib/prioriteiten'
 import { volgendeKleur } from '../lib/kleuren'
 import { Titelveld } from './Titelveld'
+import { Vinkje } from './TaakRegel'
 
 /** 16px op mobiel, want onder die grens zoomt Safari bij het focussen in. */
 const VELD =
@@ -22,7 +23,16 @@ interface Props {
 }
 
 export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDatum }: Props) {
-  const { lijsten, labels, taakToevoegen, taakBijwerken, lijstToevoegen } = useTaken()
+  const {
+    alleTaken,
+    lijsten,
+    labels,
+    taakToevoegen,
+    taakBijwerken,
+    taakAfvinken,
+    taakVerwijderen,
+    lijstToevoegen,
+  } = useTaken()
   const [titel, setTitel] = useState('')
   const [omschrijving, setOmschrijving] = useState('')
   const [datum, setDatum] = useState('')
@@ -30,7 +40,12 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [lijstId, setLijstId] = useState<string>('')
   const [gekozenLabels, setGekozenLabels] = useState<string[]>([])
   const [bezig, setBezig] = useState(false)
+  const [nieuweSub, setNieuweSub] = useState('')
   const omschrijvingVeld = useRef<HTMLTextAreaElement>(null)
+
+  // De taak komt als momentopname binnen. Voor de subtaken kijken we naar de
+  // actuele versie, anders staat een net toegevoegde subtaak er niet bij.
+  const actueel = taak ? (alleTaken.find((t) => t.id === taak.id) ?? taak) : undefined
 
   // Wat er met "#klas", "volgende week donderdag" en "p1" in de titel gaat
   // gebeuren. Live, zodat je het ziet voordat je opslaat in plaats van erna.
@@ -50,6 +65,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     setPrioriteit(taak?.priority ?? 4)
     setLijstId(taak?.list_id ?? standaardLijst ?? '')
     setGekozenLabels(taak?.labelIds ?? [])
+    setNieuweSub('')
     setBezig(false)
   }, [open, taak, standaardLijst, standaardDatum])
 
@@ -97,6 +113,16 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
 
     setBezig(false)
     opSluiten()
+  }
+
+  async function subToevoegen() {
+    if (!actueel || !nieuweSub.trim()) return
+    await taakToevoegen({
+      title: nieuweSub,
+      parent_id: actueel.id,
+      list_id: actueel.list_id,
+    })
+    setNieuweSub('')
   }
 
   function labelWisselen(id: string) {
@@ -238,6 +264,75 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
               ))}
             </select>
           </div>
+
+          {/* Alleen bij een taak die al bestaat: een subtaak heeft een ouder
+              nodig, en die is er pas na het opslaan. */}
+          {actueel && (
+            <div className="mt-4 border-t border-line pt-3">
+              <p className="mb-1.5 text-xs font-medium text-ink-soft">
+                Subtaken{' '}
+                <span className="text-ink-faint">
+                  {actueel.subtasks.filter((s) => s.completed_at).length}/{actueel.subtasks.length}
+                </span>
+              </p>
+
+              <div className="space-y-1">
+                {actueel.subtasks.map((s) => (
+                  <div key={s.id} className="group/sub flex items-center gap-2.5">
+                    <Vinkje
+                      aan={s.completed_at !== null}
+                      kleur="#94a3b8"
+                      klein
+                      opKlik={() => void taakAfvinken(s.id, s.completed_at === null)}
+                    />
+                    <span
+                      className={[
+                        'flex-1 text-sm',
+                        s.completed_at ? 'text-ink-faint line-through' : 'text-ink-soft',
+                      ].join(' ')}
+                    >
+                      {s.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void taakVerwijderen(s.id)}
+                      aria-label="Subtaak verwijderen"
+                      className="grid size-8 shrink-0 place-items-center rounded-md text-ink-faint transition hover:text-danger sm:size-6 sm:opacity-0 sm:group-hover/sub:opacity-100"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                {/* Een subtaak wordt meteen opgeslagen, net als in de lijst;
+                    daarom een eigen knop en geen tweede formulier in dit
+                    formulier - dat mag niet van de browser. */}
+                <div className="flex items-center gap-2.5 pt-1">
+                  <span className="size-[18px] shrink-0 rounded-full border border-dashed border-line" />
+                  <input
+                    value={nieuweSub}
+                    onChange={(e) => setNieuweSub(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return
+                      e.preventDefault()
+                      void subToevoegen()
+                    }}
+                    placeholder="Subtaak toevoegen…"
+                    className="min-w-0 flex-1 bg-transparent py-1.5 text-base outline-none placeholder:text-ink-faint sm:text-sm"
+                  />
+                  {nieuweSub.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => void subToevoegen()}
+                      className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-brand transition hover:bg-brand-soft"
+                    >
+                      Toevoegen
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {labels.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">

@@ -133,6 +133,50 @@ staan.
   op slot. Onder het titelveld zie je live wat er opgeslagen gaat worden.
 - Een `#` midden in een woord telt niet mee, dus `C#-cursus` blijft heel.
 
+## Als connector in Claude
+
+`supabase/functions/mcp/` is een MCP-server: daarmee kan Claude - in een
+gesprek, in Cowork of in Code - je taken opzoeken, aanmaken, bijwerken en
+afvinken. Hij draait als Edge Function naast dezelfde database die de app
+gebruikt, dus je ziet wat Claude doet meteen in de app terug.
+
+De protocolkant staat apart in `protocol.ts`, zonder Supabase en zonder Deno
+eromheen. Dat is bewust: zo is het stuk dat je verder alleen in de wolk ziet
+draaien hier na te rekenen met een namaakdatabase.
+
+**Eenmalig klaarzetten** (Supabase CLI nodig):
+
+```bash
+# 1. Een sleutel verzinnen die alleen jij kent
+openssl rand -hex 32
+
+# 2. Die sleutel en je gebruikers-id als secrets zetten. Het id vind je in
+#    Supabase onder Authentication -> Users.
+supabase secrets set MCP_TOKEN=<de sleutel> MCP_USER_ID=<je user id>
+
+# 3. Uitrollen
+supabase functions deploy mcp
+```
+
+**Toevoegen in Claude**: instellingen -> connectors -> eigen connector, met als
+adres:
+
+```
+https://<project>.supabase.co/functions/v1/mcp?k=<de sleutel>
+```
+
+De sleutel mag ook als `Authorization: Bearer <sleutel>`; hij staat in het
+adres omdat niet elke plek waar je een connector toevoegt een eigen header
+laat instellen. Houd dat adres dus net zo geheim als een wachtwoord - wie het
+heeft, kan bij je taken. Lekt het toch, dan draai je stap 1 t/m 3 opnieuw en is
+het oude adres meteen waardeloos.
+
+Twee dingen om te weten. De functie gebruikt de `service_role`-sleutel en gaat
+daarmee langs row level security heen; elke vraag filtert daarom met de hand op
+`MCP_USER_ID`. En datums gaan als `JJJJ-MM-DD` over de lijn: "volgende week
+donderdag" rekent Claude zelf uit, zodat de taalkant op één plek blijft (in de
+app, bij het invoerveld).
+
 ## Installeren als app
 
 De site is een PWA: op Android geeft Chrome "toevoegen aan startscherm", op
