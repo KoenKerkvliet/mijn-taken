@@ -42,7 +42,7 @@ export default defineConfig({
         ],
         shortcuts: [
           { name: 'Nieuwe taak', short_name: 'Nieuw', url: `${BASIS}?nieuw=1` },
-          { name: 'Binnenkort', short_name: 'Binnenkort', url: `${BASIS}binnenkort` },
+          { name: 'Planning', short_name: 'Planning', url: `${BASIS}planning` },
         ],
       },
 

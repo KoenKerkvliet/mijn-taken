@@ -34,7 +34,7 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
   const aantalVandaag = open_taken.filter(
     (t) => t.due_date !== null && t.due_date <= vandaag(),
   ).length
-  const aantalInbox = open_taken.filter((t) => t.list_id === null).length
+  const aantalOpen = open_taken.length
   const aantalTeLaat = open_taken.filter((t) => isAchterstallig(t.due_date)).length
 
   const email = session?.user.email ?? ''
@@ -163,9 +163,9 @@ export function Zijbalk({ opNieuweTaak, open, opSluiten }: Props) {
         >
           <ul className="space-y-0.5">
             <Item to="/zoeken" label="Zoeken" icoon="🔍" />
-            <Item to="/inbox" label="Inbox" icoon="📥" aantal={aantalInbox} />
             <Item to="/" label="Vandaag" icoon="☀️" aantal={aantalVandaag} nadruk={aantalTeLaat > 0} />
-            <Item to="/binnenkort" label="Binnenkort" icoon="🗓️" />
+            <Item to="/planning" label="Planning" icoon="🗂️" aantal={aantalOpen} />
+            <Item to="/agenda" label="Agenda" icoon="🗓️" />
             <Item to="/klaar" label="Afgerond" icoon="✅" />
           </ul>
 

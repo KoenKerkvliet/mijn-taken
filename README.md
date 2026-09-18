@@ -12,7 +12,14 @@ dashboard; de startpagina is alleen een inlogscherm.
 - **Vandaag** - achterstallige taken, wat vandaag afloopt, en cijfers over open,
   achterstallig en afgerond werk (inclusief een weekgrafiek). Staat er iets te
   laat, dan zet **Herplannen** de hele stapel in een keer op vandaag.
-- **Binnenkort** - de komende zeven dagen, dag voor dag.
+- **Planning** - alles wat openstaat, uit alle lijsten door elkaar, op een
+  bord. Waar een lijstpagina per lijst kijkt, kijkt deze pagina per moment: wat
+  moet er deze week gebeuren, wat volgende week, en wat heeft nog geen dag. Met
+  knopjes bovenaan filter je op lijst en label; die keuze blijft staan tot je
+  hem wist.
+- **Agenda** - al je taken in een maandoverzicht, uit alle lijsten samen.
+- **Binnenkort** - de komende zeven dagen, dag voor dag. Staat niet meer in de
+  zijbalk, maar `/binnenkort` werkt nog voor wie er een bladwijzer van had.
 - **Zoeken** - door titels, omschrijvingen, subtaken, lijstnamen en labels.
   Elk woord moet ergens raak zijn, dus je maakt een zoekopdracht scherper door
   door te typen.

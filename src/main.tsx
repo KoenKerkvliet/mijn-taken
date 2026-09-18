@@ -13,6 +13,8 @@ import { Binnenkort } from './pages/Binnenkort'
 import { Filterpagina } from './pages/Filterpagina'
 import { Zoeken } from './pages/Zoeken'
 import { Instellingen } from './pages/Instellingen'
+import { Planning } from './pages/Planning'
+import { Agendapagina } from './pages/Agendapagina'
 
 // index.html zet het thema al voor de eerste tekening; dit zet ook de kleur
 // van de statusbalk goed, die daar nog van de systeeminstelling uitging.
@@ -34,6 +36,10 @@ createRoot(document.getElementById('root')!).render(
               }
             >
               <Route path="/" element={<Vandaag />} />
+              <Route path="/planning" element={<Planning />} />
+              <Route path="/agenda" element={<Agendapagina />} />
+              {/* Niet meer in de zijbalk, wel bereikbaar: een oude snelkoppeling
+                  of bladwijzer hoort niet ineens op Vandaag uit te komen. */}
               <Route path="/binnenkort" element={<Binnenkort />} />
               <Route path="/zoeken" element={<Zoeken />} />
               <Route path="/instellingen" element={<Instellingen />} />
