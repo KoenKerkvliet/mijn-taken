@@ -127,7 +127,7 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
               if (id) void taakVerzetten(id, groep.datum ?? null)
             }}
             className={[
-              'flex w-[17rem] shrink-0 snap-start flex-col rounded-xl border transition sm:w-60',
+              'kolom flex w-[17rem] shrink-0 snap-start flex-col rounded-xl border transition sm:w-60',
               actief ? 'border-brand bg-brand-soft' : 'border-transparent',
               // Tijdens het slepen mag je zien waar de lege kolommen zitten.
               sleeptKaart && groep.taken.length === 0 ? 'border-dashed border-line' : '',
@@ -148,7 +148,7 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
 
             {/* De kolom schuift van binnen, zodat de schuifbalk van het bord
                 zelf onderaan het scherm blijft staan. */}
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-20 lg:pb-3">
+            <div className="kolombaan flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-20 lg:pb-3">
               {groep.taken.map((t) => (
                 <Kaart
                   key={t.id}

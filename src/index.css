@@ -88,6 +88,20 @@ html, body {
   background-clip: content-box;
 }
 
+/* De schuifbalk in een bordkolom hoort er alleen te zijn als je in die kolom
+   bezig bent. De breedte blijft wel altijd gereserveerd (thin met een
+   doorzichtig duimpje): ging de balk zelf komen en gaan, dan zouden de
+   kaarten een paar pixels verspringen zodra je de kolom aanwijst. */
+.kolombaan {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.kolom:hover .kolombaan,
+.kolombaan:focus-within {
+  scrollbar-color: var(--color-line) transparent;
+}
+
 /* Focus zichtbaar houden voor toetsenbordgebruik, maar niet bij muisklikken. */
 :focus-visible {
   outline: 2px solid var(--color-brand);
