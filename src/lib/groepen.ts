@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { dagenVanafVandaag, overDagen, parseISODate, toonDatum, vandaag } from './dates'
+import { parseISODate, startVanDeWeek, toISODate, toonDatum } from './dates'
 import { sorteerTaken } from './sorteren'
 import type { TaskWithMeta } from './types'
 
@@ -22,17 +22,50 @@ export interface Groep {
   leegTekst?: string
 }
 
-/** De indeling die een bord bruikbaar maakt op een pagina zonder eigen
- *  dagindeling: te laat, vandaag, morgen, de rest van de week, later, en wat
- *  helemaal geen datum heeft. Lege kolommen blijven staan - een bord waarvan
- *  de kolommen verspringen zodra je iets versleept, is niet te volgen. */
-export function opDatumGroeperen(taken: TaskWithMeta[]): Groep[] {
-  const nu = vandaag()
+/** De indeling van een bord op een pagina zonder eigen dagindeling.
+ *
+ *  De weken lopen mee met de kalender, niet met een venster van zeven dagen
+ *  vanaf vandaag. Anders valt "volgende week donderdag" op een vrijdag onder
+ *  "deze week", terwijl je hem net als volgende week hebt ingetypt. Deze week
+ *  loopt dus tot en met zondag, volgende week is de maandag daarna tot en met
+ *  de zondag erop.
+ *
+ *  Een taak komt in de eerste kolom die past. Op een zondag hoort "morgen" al
+ *  bij de week erna; die staat dan onder Morgen en niet nog eens onder
+ *  Volgende week. */
+export function opDatumGroeperen(taken: TaskWithMeta[], nu = new Date()): Groep[] {
+  const vandaagISO = toISODate(nu)
+  const morgenISO = dagErbij(nu, 1)
+  const overmorgenISO = dagErbij(nu, 2)
+
+  const maandag = startVanDeWeek(nu)
+  const zondagISO = dagErbij(maandag, 6)
+  const volgendeZondagISO = dagErbij(maandag, 13)
+
+  /** Waar een taak landt die je in deze kolom laat vallen: de eerste dag van
+   *  het vak die nog niet door Vandaag of Morgen is opgeëist. Ligt die dag
+   *  voorbij het einde van het vak, dan valt er niets te plaatsen. */
+  function eersteDag(begin: string, einde: string): string | undefined {
+    const dag = begin < overmorgenISO ? overmorgenISO : begin
+    return dag <= einde ? dag : undefined
+  }
+
   const groepen: Groep[] = [
     { sleutel: 'telaat', titel: 'Over tijd', accent: true, taken: [], leegTekst: 'Niets te laat.' },
-    { sleutel: 'vandaag', titel: 'Vandaag', datum: nu, taken: [] },
-    { sleutel: 'morgen', titel: 'Morgen', datum: overDagen(1), taken: [] },
-    { sleutel: 'week', titel: 'Deze week', datum: overDagen(2), taken: [] },
+    { sleutel: 'vandaag', titel: 'Vandaag', datum: vandaagISO, taken: [] },
+    { sleutel: 'morgen', titel: 'Morgen', datum: morgenISO, taken: [] },
+    {
+      sleutel: 'week',
+      titel: 'Deze week',
+      datum: eersteDag(overmorgenISO, zondagISO),
+      taken: [],
+    },
+    {
+      sleutel: 'volgendeweek',
+      titel: 'Volgende week',
+      datum: eersteDag(dagErbij(maandag, 7), volgendeZondagISO),
+      taken: [],
+    },
     { sleutel: 'later', titel: 'Later', taken: [] },
     { sleutel: 'geendatum', titel: 'Geen datum', datum: null, taken: [] },
   ]
@@ -40,19 +73,22 @@ export function opDatumGroeperen(taken: TaskWithMeta[]): Groep[] {
   const bij = (sleutel: string) => groepen.find((g) => g.sleutel === sleutel)!
 
   for (const t of taken) {
-    if (!t.due_date) {
-      bij('geendatum').taken.push(t)
-      continue
-    }
-    const verschil = dagenVanafVandaag(t.due_date)
-    if (verschil < 0) bij('telaat').taken.push(t)
-    else if (verschil === 0) bij('vandaag').taken.push(t)
-    else if (verschil === 1) bij('morgen').taken.push(t)
-    else if (verschil < 7) bij('week').taken.push(t)
+    if (!t.due_date) bij('geendatum').taken.push(t)
+    else if (t.due_date < vandaagISO) bij('telaat').taken.push(t)
+    else if (t.due_date === vandaagISO) bij('vandaag').taken.push(t)
+    else if (t.due_date === morgenISO) bij('morgen').taken.push(t)
+    else if (t.due_date <= zondagISO) bij('week').taken.push(t)
+    else if (t.due_date <= volgendeZondagISO) bij('volgendeweek').taken.push(t)
     else bij('later').taken.push(t)
   }
 
   return groepen.map((g) => ({ ...g, taken: sorteerTaken(g.taken) }))
+}
+
+function dagErbij(vanaf: Date, dagen: number): string {
+  const d = new Date(vanaf)
+  d.setDate(d.getDate() + dagen)
+  return toISODate(d)
 }
 
 /** Kopje voor een losse dag: "Vandaag · 18 sep." of "3 oktober". */

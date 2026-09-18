@@ -28,8 +28,14 @@ lijsten te hangen.
 Rechtsboven op elke pagina staat **Weergave**. Dezelfde taken, drie brillen:
 
 - **Lijst** - alles onder elkaar, met kopjes per dag of per soort.
-- **Bord** - kolommen naast elkaar. Sleep een kaart naar een andere kolom en de
-  datum gaat mee; in "Geen datum" laten vallen haalt de datum er juist af.
+- **Bord** - kolommen naast elkaar: over tijd, vandaag, morgen, deze week,
+  volgende week, later, en wat geen datum heeft. De weken lopen mee met de
+  kalender en niet met zeven dagen vanaf vandaag - deze week loopt tot en met
+  zondag, volgende week is de maandag daarna tot en met de zondag erop. Anders
+  valt "volgende week donderdag" op een vrijdag onder *deze* week, terwijl je
+  hem net als volgende week hebt ingetypt. Sleep een kaart naar een andere
+  kolom en de datum gaat mee; in "Geen datum" laten vallen haalt de datum er
+  juist af.
   Lege kolommen blijven weg - behalve terwijl je sleept, want dan moet je er
   juist iets in kunnen laten vallen. Het bord vult het scherm, zodat de
   schuifbalk onderaan in beeld staat en niet onder de langste kolom. Schuiven
