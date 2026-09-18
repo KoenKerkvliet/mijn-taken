@@ -61,8 +61,10 @@ Rechtsboven op elke pagina staat **Weergave**. Dezelfde taken, drie brillen:
   kolom en de datum gaat mee; in "Geen datum" laten vallen haalt de datum er
   juist af.
   Lege kolommen blijven weg - behalve terwijl je sleept, want dan moet je er
-  juist iets in kunnen laten vallen. Het bord vult het scherm, zodat de
-  schuifbalk onderaan in beeld staat en niet onder de langste kolom. Schuiven
+  juist iets in kunnen laten vallen. De kolommen rekenen mee met de ruimte: op
+  een telefoon één per scherm, en op een breed scherm passen er precies vier
+  binnen het beeld. Het bord vult het scherm, zodat de schuifbalk onderaan in
+  beeld staat en niet onder de langste kolom. Schuiven
   gaat met het muiswiel, of door het bord aan de achtergrond opzij te trekken.
 - **Agenda** - een hele maand in beeld, met de gekozen dag eronder uitgeschreven.
   Slepen werkt hier ook, en taken zonder datum staan onder het raster klaar om

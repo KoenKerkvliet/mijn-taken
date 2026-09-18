@@ -100,7 +100,10 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
       onPointerUp={loslaten}
       onPointerCancel={loslaten}
       className={[
-        'schuifbaan -mx-4 flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden px-4 sm:-mx-6 sm:snap-none sm:px-6',
+        // scroll-pl laat het vangpunt de binnenmarge meetellen; zonder dat
+        // klapt een kolom strak tegen de schermrand en blijft de ruimte
+        // aan de andere kant liggen.
+        'schuifbaan -mx-4 flex min-h-0 flex-1 snap-x snap-mandatory scroll-pl-4 gap-3 overflow-x-auto overflow-y-hidden px-4 sm:-mx-6 sm:snap-none sm:scroll-pl-6 sm:px-6',
         pannen ? 'cursor-grabbing select-none' : kanSchuiven ? 'sm:cursor-grab' : '',
       ].join(' ')}
     >
@@ -127,7 +130,12 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
               if (id) void taakVerzetten(id, groep.datum ?? null)
             }}
             className={[
-              'kolom flex w-[17rem] shrink-0 snap-start flex-col rounded-xl border transition sm:w-60',
+              // De breedte rekent mee met de ruimte in plaats van vast te
+              // staan: op een telefoon één kolom per scherm, en op een groot
+              // scherm passen er precies vier. De aftrek is de tussenruimte,
+              // die bij n kolommen (n-1) keer meetelt.
+              'kolom flex shrink-0 snap-start flex-col rounded-xl border transition',
+              'w-full sm:w-[calc((100%-0.75rem)/2)] lg:w-[calc((100%-1.5rem)/3)] xl:w-[calc((100%-2.25rem)/4)]',
               actief ? 'border-brand bg-brand-soft' : 'border-transparent',
               // Tijdens het slepen mag je zien waar de lege kolommen zitten.
               sleeptKaart && groep.taken.length === 0 ? 'border-dashed border-line' : '',
