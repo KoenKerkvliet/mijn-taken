@@ -5,10 +5,11 @@ import { Paginakop } from '../components/Layout'
 import { bewaarThema, leesThema, THEMAS, type Thema } from '../lib/thema'
 import { paginaKlassen } from '../lib/weergave'
 
-type Tab = 'algemeen' | 'uiterlijk'
+type Tab = 'algemeen' | 'voortgang' | 'uiterlijk'
 
 const TABS: { waarde: Tab; naam: string }[] = [
   { waarde: 'algemeen', naam: 'Algemeen' },
+  { waarde: 'voortgang', naam: 'Voortgang' },
   { waarde: 'uiterlijk', naam: 'Uiterlijk' },
 ]
 
@@ -39,7 +40,9 @@ export function Instellingen() {
         ))}
       </div>
 
-      {tab === 'algemeen' ? <Algemeen /> : <Uiterlijk />}
+      {tab === 'algemeen' && <Algemeen />}
+      {tab === 'voortgang' && <Voortgang />}
+      {tab === 'uiterlijk' && <Uiterlijk />}
     </div>
   )
 }
@@ -159,6 +162,59 @@ function Algemeen() {
   )
 }
 
+function Voortgang() {
+  const { dagdoel, dagdoelOpslaan } = useAuth()
+  const [doel, setDoel] = useState(dagdoel)
+  const [melding, setMelding] = useState<Melding>(null)
+
+  async function zet(nieuw: number) {
+    const geklemd = Math.max(0, Math.min(50, nieuw))
+    setDoel(geklemd)
+    setMelding(null)
+    try {
+      await dagdoelOpslaan(geklemd)
+    } catch (fout) {
+      setMelding({ soort: 'fout', tekst: tekstVan(fout) })
+      setDoel(dagdoel)
+    }
+  }
+
+  return (
+    <Kaart
+      titel="Dagelijks doel"
+      uitleg="Hoeveel taken je op een dag af wilt hebben. Op Vandaag loopt er een balk mee."
+    >
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void zet(doel - 1)}
+          disabled={doel <= 0}
+          aria-label="Eentje minder"
+          className={STAP}
+        >
+          −
+        </button>
+        <span className="min-w-16 text-center text-2xl font-semibold tabular-nums">
+          {doel === 0 ? 'uit' : doel}
+        </span>
+        <button
+          type="button"
+          onClick={() => void zet(doel + 1)}
+          disabled={doel >= 50}
+          aria-label="Eentje meer"
+          className={STAP}
+        >
+          +
+        </button>
+        <span className="text-xs text-ink-faint">
+          {doel === 0 ? 'Geen doel; je ziet alleen het aantal.' : 'taken per dag'}
+        </span>
+      </div>
+      <Regel melding={melding} />
+    </Kaart>
+  )
+}
+
 function Uiterlijk() {
   const [thema, setThema] = useState<Thema>(() => leesThema())
 
@@ -208,6 +264,9 @@ const VELD =
 
 const KNOP =
   'rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50'
+
+const STAP =
+  'grid size-10 place-items-center rounded-lg border border-line text-lg text-ink-soft transition hover:border-brand hover:text-brand disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-soft'
 
 function Kaart({
   titel,

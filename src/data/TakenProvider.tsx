@@ -5,6 +5,8 @@ import type { Label, List, NewTask, Task, TaskWithMeta } from '../lib/types'
 import { useAuth } from '../auth/AuthProvider'
 import { leesCache, schrijfCache, wisCache } from '../lib/cache'
 import { verplaats } from '../lib/volgorde'
+import { leesHerhaling, volgendeDatum } from '../lib/herhaling'
+import { vandaag } from '../lib/dates'
 
 interface TakenState {
   /** De lijsten die in de zijbalk horen: alles wat niet opgeborgen is. */
@@ -197,12 +199,19 @@ export function TakenProvider({ children }: { children: ReactNode }) {
         priority: velden.priority ?? 4,
         list_id: velden.list_id ?? null,
         parent_id: velden.parent_id ?? null,
+        // Alleen meesturen als er echt een herhaling is: zolang migratie 0003
+        // niet gedraaid is, bestaat de kolom niet en zou elke taak stuklopen.
+        ...(velden.recurrence ? { recurrence: velden.recurrence } : {}),
       })
       .select()
       .single()
 
     if (error) {
-      setFout(error.message)
+      setFout(
+        error.message.includes('recurrence')
+          ? 'Herhalen kan pas als migratie 0003 in Supabase is uitgevoerd.'
+          : error.message,
+      )
       return
     }
 
@@ -234,7 +243,11 @@ export function TakenProvider({ children }: { children: ReactNode }) {
         .select()
         .single()
       if (error) {
-        setFout(error.message)
+        setFout(
+          error.message.includes('recurrence')
+            ? 'Herhalen kan pas als migratie 0003 in Supabase is uitgevoerd.'
+            : error.message,
+        )
         return
       }
       setRuweTaken((huidig) => huidig.map((t) => (t.id === id ? (data as Task) : t)))
@@ -267,6 +280,51 @@ export function TakenProvider({ children }: { children: ReactNode }) {
 
   const taakAfvinken = useCallback<TakenState['taakAfvinken']>(
     async (id, klaar) => {
+      const taak = ruweTaken.find((t) => t.id === id)
+      const herhaling = klaar ? leesHerhaling(taak?.recurrence) : null
+
+      // Een herhalende taak gaat niet op slot maar door: hij schuift naar de
+      // volgende keer en laat een afgeronde kopie achter. Anders zou je hem
+      // één keer afvinken en daarna nooit meer zien, en zou wat je gedaan
+      // hebt nergens staan.
+      if (taak && herhaling) {
+        const gedaan = taak.due_date ?? vandaag()
+        const volgende = volgendeDatum(herhaling, gedaan)
+
+        setRuweTaken((huidig) =>
+          huidig.map((t) => (t.id === id ? { ...t, due_date: volgende } : t)),
+        )
+
+        const { data: kopie, error: kopieFout } = await supabase
+          .from('tasks')
+          .insert({
+            title: taak.title,
+            description: taak.description,
+            due_date: gedaan,
+            priority: taak.priority,
+            list_id: taak.list_id,
+            completed_at: new Date().toISOString(),
+          })
+          .select()
+          .single()
+        if (kopieFout) {
+          setFout(kopieFout.message)
+          await herladen()
+          return
+        }
+        setRuweTaken((huidig) => [...huidig, kopie as Task])
+
+        const { error } = await supabase
+          .from('tasks')
+          .update({ due_date: volgende })
+          .eq('id', id)
+        if (error) {
+          setFout(error.message)
+          await herladen()
+        }
+        return
+      }
+
       const nieuw = klaar ? new Date().toISOString() : null
       // Meteen lokaal bijwerken; een vinkje dat een halve seconde nadenkt
       // voelt kapot.
@@ -279,7 +337,7 @@ export function TakenProvider({ children }: { children: ReactNode }) {
         await herladen()
       }
     },
-    [herladen],
+    [herladen, ruweTaken],
   )
 
   const taakVerwijderen = useCallback<TakenState['taakVerwijderen']>(async (id) => {

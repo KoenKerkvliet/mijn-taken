@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
 import type { TaskWithMeta } from '../lib/types'
+import { useAuth } from '../auth/AuthProvider'
 import { isAchterstallig, startVanDeWeek, toISODate, vandaag } from '../lib/dates'
 
 const DAGEN = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo']
 
 export function Statistieken({ taken }: { taken: TaskWithMeta[] }) {
+  const { dagdoel } = useAuth()
   const cijfers = useMemo(() => {
     const vandaagISO = vandaag()
     const open = taken.filter((t) => !t.completed_at)
@@ -44,7 +46,7 @@ export function Statistieken({ taken }: { taken: TaskWithMeta[] }) {
     <div className="mb-8 grid grid-cols-2 gap-3 xl:grid-cols-4">
       <Tegel label="Openstaand" waarde={cijfers.open} />
       <Tegel label="Achterstallig" waarde={cijfers.teLaat} alarm={cijfers.teLaat > 0} />
-      <Tegel label="Vandaag afgerond" waarde={cijfers.vandaagKlaar} />
+      <Dagdoel afgerond={cijfers.vandaagKlaar} doel={dagdoel} />
 
       <div className="col-span-2 rounded-xl border border-line bg-surface p-4 xl:col-span-1">
         <div className="flex items-baseline justify-between">
@@ -76,6 +78,47 @@ export function Statistieken({ taken }: { taken: TaskWithMeta[] }) {
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+/** Wat je vandaag afvinkte, en hoever dat is richting je doel. Zonder doel
+ *  (0) blijft het gewoon een telling: een balk zonder eindpunt zegt niets. */
+function Dagdoel({ afgerond, doel }: { afgerond: number; doel: number }) {
+  if (doel <= 0) return <Tegel label="Vandaag afgerond" waarde={afgerond} />
+
+  const deel = Math.min(afgerond / doel, 1)
+  const gehaald = afgerond >= doel
+
+  return (
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <p className="text-xs font-medium text-ink-soft">Vandaag afgerond</p>
+      <p className="mt-1.5 text-3xl font-semibold tracking-tight tabular-nums">
+        {afgerond}
+        <span className="text-lg text-ink-faint"> / {doel}</span>
+      </p>
+
+      <div
+        className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted"
+        role="progressbar"
+        aria-valuenow={afgerond}
+        aria-valuemin={0}
+        aria-valuemax={doel}
+        aria-label="Voortgang van je dagelijkse doel"
+      >
+        <div
+          className={`h-full rounded-full transition-all ${gehaald ? 'bg-success' : 'bg-brand'}`}
+          style={{ width: `${deel * 100}%` }}
+        />
+      </div>
+
+      <p className="mt-1.5 text-[11px] text-ink-faint">
+        {gehaald
+          ? afgerond > doel
+            ? `Doel gehaald, en ${afgerond - doel} meer.`
+            : 'Doel gehaald.'
+          : `Nog ${doel - afgerond} te gaan.`}
+      </p>
     </div>
   )
 }

@@ -8,9 +8,12 @@ interface AuthState {
   bezigMetLaden: boolean
   /** De naam die je zelf hebt ingevuld, anders het stuk voor de @. */
   naam: string
+  /** Hoeveel taken je op een dag af wilt hebben. 0 is: geen doel. */
+  dagdoel: number
   inloggen: (email: string, wachtwoord: string) => Promise<void>
   uitloggen: () => Promise<void>
   naamOpslaan: (naam: string) => Promise<void>
+  dagdoelOpslaan: (aantal: number) => Promise<void>
   wachtwoordWijzigen: (huidig: string, nieuw: string) => Promise<void>
 }
 
@@ -55,6 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }
 
+  async function dagdoelOpslaan(aantal: number) {
+    const { error } = await supabase.auth.updateUser({ data: { dagdoel: aantal } })
+    if (error) throw error
+  }
+
   /** Eerst opnieuw inloggen met het huidige wachtwoord. Supabase vraagt er
    *  niet om, maar zonder die controle kan iedereen die even bij een open
    *  laptop komt het wachtwoord veranderen. */
@@ -76,9 +84,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (session?.user.user_metadata?.naam as string | undefined)?.trim() ||
     (session?.user.email ?? '').split('@')[0]
 
+  const bewaardDoel = session?.user.user_metadata?.dagdoel
+  // Vijf is een dag waar je 's avonds tevreden op terugkijkt zonder dat het
+  // een prestatie hoeft te zijn; wie het anders wil, zet het om.
+  const dagdoel = typeof bewaardDoel === 'number' ? bewaardDoel : 5
+
   return (
     <AuthContext.Provider
-      value={{ session, bezigMetLaden, naam, inloggen, uitloggen, naamOpslaan, wachtwoordWijzigen }}
+      value={{
+        session,
+        bezigMetLaden,
+        naam,
+        dagdoel,
+        inloggen,
+        uitloggen,
+        naamOpslaan,
+        dagdoelOpslaan,
+        wachtwoordWijzigen,
+      }}
     >
       {children}
     </AuthContext.Provider>

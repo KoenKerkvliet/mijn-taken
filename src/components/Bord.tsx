@@ -3,6 +3,7 @@ import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
 import type { Groep } from '../lib/groepen'
 import { isAchterstallig, toonDatum } from '../lib/dates'
+import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
 import { PRIORITEITEN } from '../lib/prioriteiten'
 import { Vinkje } from './TaakRegel'
 
@@ -209,6 +210,7 @@ function Kaart({
   const eigenLabels = labels.filter((lb) => taak.labelIds.includes(lb.id))
   const subKlaar = taak.subtasks.filter((s) => s.completed_at).length
   const teLaat = !klaar && isAchterstallig(taak.due_date)
+  const herhaling = leesHerhaling(taak.recurrence)
 
   return (
     <article
@@ -248,6 +250,11 @@ function Kaart({
           {taak.due_date && (
             <span className={teLaat ? 'font-medium text-danger' : 'text-ink-soft'}>
               🗓️ {toonDatum(taak.due_date)}
+            </span>
+          )}
+          {herhaling && (
+            <span className="text-success" title={`Herhaalt ${toonHerhaling(herhaling)}`}>
+              🔁
             </span>
           )}
           {/* Op een kaart is geen ruimte om subtaken uit te klappen; dit

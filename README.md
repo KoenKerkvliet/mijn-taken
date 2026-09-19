@@ -31,7 +31,15 @@ dashboard; de startpagina is alleen een inlogscherm.
   zoeken. Hij blijft wel bestaan en staat onderaan de zijbalk onder *Archief*,
   met één klik terug te halen. Weggooien is definitief, opbergen niet.
 - **Labels** - dwars door lijsten heen filteren.
-- **Taken** - omschrijving, datum, prioriteit (1-4), subtaken en labels.
+- **Taken** - omschrijving, datum, prioriteit (1-4), subtaken, labels en
+  herhaling.
+- **Herhalen** - typ `elke maandag` of `elke 2 weken` en de taak komt terug.
+  Afvinken zet hem door naar de volgende keer en laat een afgeronde kopie
+  achter: zo staat in Afgerond wat je werkelijk gedaan hebt en telt het mee
+  voor je dagelijkse doel.
+- **Dagelijks doel** - op Vandaag loopt een balk mee met hoeveel je die dag
+  hebt afgevinkt. Het aantal stel je in onder Instellingen; op 0 verdwijnt de
+  balk.
 
 Projecten zitten nog niet in de UI; het schema laat ruimte om ze later boven
 lijsten te hangen.
@@ -45,10 +53,12 @@ Onder je naam bovenaan de zijbalk zit **Instellingen**, met twee tabbladen:
   moet je eerst je huidige invullen. Supabase vraagt daar niet om, maar zonder
   die controle kan iedereen die even bij een open laptop komt het wachtwoord
   veranderen. Het e-mailadres zelf is er niet te wijzigen.
+- **Voortgang** - je dagelijkse doel: hoeveel taken je op een dag af wilt
+  hebben. Op 0 verdwijnt de balk op Vandaag.
 - **Uiterlijk** - thema: systeem, licht of donker.
 
 De naam staat in `user_metadata` van je account, niet in een eigen tabel: het
-is één veld, en zo blijft het schema zoals het is. Het thema staat juist in
+is één veld, en zo blijft het schema zoals het is. Hetzelfde geldt voor je dagelijkse doel. Het thema staat juist in
 `localStorage`, dus per apparaat - op een telefoon in de zon wil je vaak iets
 anders dan 's avonds achter een monitor. Het wordt gezet door een klein script
 in `index.html`, voordat er iets getekend wordt; anders flitst een donkere app
@@ -103,6 +113,15 @@ Wat er begrepen wordt:
   langskomt; in december is `3 januari` dus volgend jaar.
 - `over drie dagen`, `over 2 weken`, `over een maand`
 - `p1` tot en met `p4` voor de prioriteit.
+- een herhaling: `elke dag`, `elke werkdag`, `elke maandag`, `elke week`,
+  `elke 2 weken`, `elke maand`, `elk jaar`. Ook `dagelijks`, `wekelijks`,
+  `maandelijks` en `jaarlijks`. Staat er geen datum bij, dan begint de taak op
+  de eerstvolgende keer dat hij aan de beurt is - `elke maandag` op een
+  zaterdag wordt dus komende maandag.
+
+Een herhaling wordt vóór de datum gelezen: in `elke maandag` is "maandag"
+geen losse dag maar een deel van het ritme. `Iets doen maandag` blijft dus
+gewoon een taak op maandag.
 
 Er wordt niet op afkortingen als `ma` of `zo` gezocht: dat zijn ook gewone
 woorden, en een taak die stilletjes een woord uit zijn titel kwijtraakt is
@@ -232,9 +251,10 @@ draaien.
 1. **Supabase-project** aanmaken (regio West EU).
 2. **Schema** draaien: de bestanden in `supabase/migrations/` op volgorde in de
    SQL-editor plakken en uitvoeren. Bij een bestaand project alleen de nieuwe;
-   `0002_archiveren.sql` voegt de kolom toe die het archiveren van lijsten
-   mogelijk maakt. Zolang die migratie niet gedraaid is, werkt de rest van de
-   app gewoon en zegt alleen het archiveren dat het nog niet kan.
+   `0002_archiveren.sql` maakt het archiveren van lijsten mogelijk en
+   `0003_herhalen.sql` de herhalende taken. Zolang een migratie niet gedraaid
+   is werkt de rest van de app gewoon, en zegt alleen dat ene onderdeel dat
+   het nog niet kan.
 3. **Registratie uitzetten**: Authentication -> Sign In / Providers ->
    "Allow new users to sign up" uit.
 4. **Account aanmaken**: Authentication -> Users -> Add user, met

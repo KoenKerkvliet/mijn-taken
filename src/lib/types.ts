@@ -34,6 +34,9 @@ export type Task = {
   position: number
   created_at: string
   updated_at: string
+  /** JSON met de herhalingsregel, zie lib/herhaling.ts. Optioneel getypt,
+   *  zodat de app ook werkt zolang migratie 0003 nog niet gedraaid is. */
+  recurrence?: string | null
 }
 
 /** Taak zoals de UI hem gebruikt: met zijn labels en subtaken erbij. */
@@ -44,6 +47,7 @@ export type TaskWithMeta = Task & {
 
 export type NewTask = {
   title: string
+  recurrence?: string | null
   description?: string | null
   due_date?: string | null
   priority?: Priority

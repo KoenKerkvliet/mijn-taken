@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
 import { isAchterstallig, toonDatum } from '../lib/dates'
+import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
 import { PRIORITEITEN } from '../lib/prioriteiten'
 
 interface Props {
@@ -22,6 +23,7 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
   const eigenLabels = labels.filter((lb) => taak.labelIds.includes(lb.id))
   const subKlaar = taak.subtasks.filter((s) => s.completed_at).length
   const teLaat = !klaar && isAchterstallig(taak.due_date)
+  const herhaling = leesHerhaling(taak.recurrence)
 
   // Subtaken verdwijnen mee (on delete cascade). Bij een losse taak is een
   // vraag alleen maar in de weg, maar een rij subtaken kwijtraken door één
@@ -64,6 +66,11 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
             {taak.due_date && (
               <span className={teLaat ? 'font-medium text-danger' : 'text-ink-soft'}>
                 🗓️ {toonDatum(taak.due_date)}
+              </span>
+            )}
+            {herhaling && (
+              <span className="text-success" title={`Herhaalt ${toonHerhaling(herhaling)}`}>
+                🔁
               </span>
             )}
             {toonLijst && lijst && (

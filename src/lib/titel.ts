@@ -1,6 +1,7 @@
 import type { Label, List, Priority } from './types'
 import { vindTags } from './tags'
 import { vindDatum } from './datumtaal'
+import { eersteDatum, schrijfHerhaling, vindHerhaling, type Herhaling } from './herhaling'
 import { kleurVanPrioriteit } from './prioriteiten'
 
 /** Alles wat een titel over zichzelf verklapt: een lijst of label achter een
@@ -10,7 +11,7 @@ import { kleurVanPrioriteit } from './prioriteiten'
  *  Eén plek voor alle drie, want ze knippen in dezelfde tekst. Los van elkaar
  *  zouden de posities na de eerste knipbeurt niet meer kloppen. */
 
-export type Soort = 'lijst' | 'label' | 'datum' | 'prioriteit'
+export type Soort = 'lijst' | 'label' | 'datum' | 'prioriteit' | 'herhaling'
 
 export interface Stuk {
   van: number
@@ -28,6 +29,7 @@ export interface Titeluitkomst {
   onbekend: string[]
   datum: string | null
   prioriteit: Priority | null
+  herhaling: Herhaling | null
   /** De herkende stukken, op volgorde, om ze in het veld te markeren. */
   stukken: Stuk[]
 }
@@ -45,6 +47,7 @@ export function letterlijk(ruweTitel: string): Titeluitkomst {
     onbekend: [],
     datum: null,
     prioriteit: null,
+    herhaling: null,
     stukken: [],
   }
 }
@@ -65,13 +68,34 @@ export function leesTitel(
     onbekend: [],
     datum: null,
     prioriteit: null,
+    herhaling: null,
     stukken: [],
   }
 
   const tags = vindTags(ruweTitel, lijsten, labels)
   const stukken: Stuk[] = [...tags.stukken]
 
-  const datum = vindDatum(ruweTitel, nu)
+  // Eerst de herhaling, want die eet de weekdag op: in "elke maandag" is
+  // "maandag" geen losse dag maar een deel van het ritme. Wat hij pakt wordt
+  // daarom uit de tekst gehaald voordat de datumlezer erlangs gaat - met
+  // spaties, zodat alle posities blijven kloppen.
+  const herhaling = vindHerhaling(ruweTitel)
+  let voorDatum = ruweTitel
+  if (herhaling) {
+    // Een eigen kleur, zodat je ziet dat dit iets anders is dan een datum.
+    stukken.push({
+      van: herhaling.van,
+      tot: herhaling.tot,
+      soort: 'herhaling',
+      kleur: 'var(--color-success)',
+    })
+    voorDatum =
+      ruweTitel.slice(0, herhaling.van) +
+      ' '.repeat(herhaling.tot - herhaling.van) +
+      ruweTitel.slice(herhaling.tot)
+  }
+
+  const datum = vindDatum(voorDatum, nu)
   if (datum) stukken.push({ van: datum.van, tot: datum.tot, soort: 'datum' })
 
   const prioriteitTreffer = PRIORITEIT.exec(ruweTitel)
@@ -105,10 +129,18 @@ export function leesTitel(
     lijst: tags.lijst,
     labels: tags.labels,
     onbekend: tags.onbekend,
-    datum: datum?.iso ?? null,
+    // Een herhaling zonder datum moet ergens beginnen: bij de eerstvolgende
+    // keer dat hij aan de beurt is.
+    datum: datum?.iso ?? (herhaling ? eersteDatum(herhaling.herhaling, nu) : null),
     prioriteit,
+    herhaling: herhaling?.herhaling ?? null,
     stukken,
   }
+}
+
+/** De herhaling zoals hij de database in gaat. */
+export function herhalingVoorOpslag(uitkomst: Titeluitkomst): string | null {
+  return uitkomst.herhaling ? schrijfHerhaling(uitkomst.herhaling) : null
 }
 
 function knip(ruweTitel: string, stukken: Stuk[]): string {

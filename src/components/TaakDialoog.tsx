@@ -3,7 +3,8 @@ import type { FormEvent } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { Priority, TaskWithMeta } from '../lib/types'
 import { overDagen, toonDatum, vandaag } from '../lib/dates'
-import { leesTitel, letterlijk } from '../lib/titel'
+import { herhalingVoorOpslag, leesTitel, letterlijk } from '../lib/titel'
+import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
 import { PRIORITEITEN } from '../lib/prioriteiten'
 import { volgendeKleur } from '../lib/kleuren'
 import { Titelveld } from './Titelveld'
@@ -46,6 +47,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   // De taak komt als momentopname binnen. Voor de subtaken kijken we naar de
   // actuele versie, anders staat een net toegevoegde subtaak er niet bij.
   const actueel = taak ? (alleTaken.find((t) => t.id === taak.id) ?? taak) : undefined
+  const herhaaltNu = leesHerhaling(actueel?.recurrence)
 
   // Wat er met "#klas", "volgende week donderdag" en "p1" in de titel gaat
   // gebeuren. Live, zodat je het ziet voordat je opslaat in plaats van erna.
@@ -109,7 +111,12 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     const alleLabels = [...new Set([...gekozenLabels, ...gelezen.labels.map((l) => l.id)])]
 
     if (taak) await taakBijwerken(taak.id, velden, alleLabels)
-    else await taakToevoegen({ ...velden, labelIds: alleLabels })
+    else
+      await taakToevoegen({
+        ...velden,
+        labelIds: alleLabels,
+        recurrence: herhalingVoorOpslag(gelezen),
+      })
 
     setBezig(false)
     opSluiten()
@@ -180,6 +187,11 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
               )}
               {gelezen.datum && (
                 <span className="font-medium text-brand">🗓️ {toonDatum(gelezen.datum)}</span>
+              )}
+              {gelezen.herhaling && (
+                <span className="font-medium text-success">
+                  🔁 {toonHerhaling(gelezen.herhaling)}
+                </span>
               )}
               {gelezen.prioriteit && (
                 <span
@@ -264,6 +276,22 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
               ))}
             </select>
           </div>
+
+          {herhaaltNu && (
+            <p className="mt-3 flex items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-xs">
+              <span className="font-medium text-success">🔁 Herhaalt {toonHerhaling(herhaaltNu)}</span>
+              <span className="text-ink-faint">
+                Afvinken schuift hem door naar de volgende keer.
+              </span>
+              <button
+                type="button"
+                onClick={() => void taakBijwerken(actueel!.id, { recurrence: null })}
+                className="ml-auto shrink-0 rounded-md px-2 py-0.5 text-ink-soft transition hover:bg-danger/10 hover:text-danger"
+              >
+                Stoppen
+              </button>
+            </p>
+          )}
 
           {/* Alleen bij een taak die al bestaat: een subtaak heeft een ouder
               nodig, en die is er pas na het opslaan. */}
