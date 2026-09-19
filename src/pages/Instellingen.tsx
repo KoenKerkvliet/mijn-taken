@@ -3,6 +3,13 @@ import type { FormEvent } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { Paginakop } from '../components/Layout'
 import { bewaarThema, leesThema, THEMAS, type Thema } from '../lib/thema'
+import {
+  bewaarFeedback,
+  kanTrillen,
+  leesFeedback,
+  speelAfgerond,
+  type Feedback,
+} from '../lib/feedback'
 import { paginaKlassen } from '../lib/weergave'
 
 type Tab = 'algemeen' | 'voortgang' | 'uiterlijk'
@@ -180,6 +187,7 @@ function Voortgang() {
   }
 
   return (
+    <div className="space-y-6">
     <Kaart
       titel="Dagelijks doel"
       uitleg="Hoeveel taken je op een dag af wilt hebben. Op Vandaag loopt er een balk mee."
@@ -212,6 +220,106 @@ function Voortgang() {
       </div>
       <Regel melding={melding} />
     </Kaart>
+
+    <Afvinken />
+    </div>
+  )
+}
+
+/** Wat je hoort en voelt als een taak af is. Per apparaat: of je app geluid
+ *  mag maken hangt af van waar je bent, niet van wie je bent. */
+function Afvinken() {
+  const [feedback, setFeedback] = useState<Feedback>(() => leesFeedback())
+  const trillenKan = kanTrillen()
+
+  function zet(wijziging: Partial<Feedback>) {
+    const nieuw = { ...feedback, ...wijziging }
+    setFeedback(nieuw)
+    bewaarFeedback(nieuw)
+    // Meteen laten horen wat je net aanzette; anders moet je het venster uit
+    // om te weten of het is wat je wilde.
+    if (wijziging.geluid) speelAfgerond()
+    if (wijziging.trillen && trillenKan) navigator.vibrate(18)
+  }
+
+  return (
+    <Kaart titel="Bij het afvinken" uitleg="Geldt op dit apparaat.">
+      <div className="space-y-1">
+        <Schakelaar
+          naam="Geluid"
+          uitleg="Een kort toontje als een taak af is."
+          aan={feedback.geluid}
+          opWisselen={() => zet({ geluid: !feedback.geluid })}
+          extra={
+            feedback.geluid ? (
+              <button
+                type="button"
+                onClick={() => speelAfgerond()}
+                className="rounded-lg px-2 py-1 text-xs text-brand transition hover:bg-brand-soft"
+              >
+                Proberen
+              </button>
+            ) : null
+          }
+        />
+        <Schakelaar
+          naam="Trillen"
+          uitleg={
+            trillenKan
+              ? 'Een kort tikje op je telefoon.'
+              : 'Deze browser kan niet trillen; op een iPhone kan dat nergens.'
+          }
+          aan={feedback.trillen && trillenKan}
+          uit={!trillenKan}
+          opWisselen={() => zet({ trillen: !feedback.trillen })}
+        />
+      </div>
+    </Kaart>
+  )
+}
+
+function Schakelaar({
+  naam,
+  uitleg,
+  aan,
+  uit,
+  opWisselen,
+  extra,
+}: {
+  naam: string
+  uitleg: string
+  aan: boolean
+  uit?: boolean
+  opWisselen: () => void
+  extra?: React.ReactNode
+}) {
+  return (
+    <div className={`flex items-center gap-3 rounded-lg py-2 ${uit ? 'opacity-60' : ''}`}>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">{naam}</span>
+        <span className="block text-xs text-ink-faint">{uitleg}</span>
+      </span>
+      {extra}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={aan}
+        aria-label={naam}
+        disabled={uit}
+        onClick={opWisselen}
+        className={[
+          'relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-default',
+          aan ? 'bg-brand' : 'bg-surface-muted ring-1 ring-line ring-inset',
+        ].join(' ')}
+      >
+        <span
+          className={[
+            'absolute top-0.5 size-5 rounded-full bg-white shadow transition-all',
+            aan ? 'left-[22px]' : 'left-0.5',
+          ].join(' ')}
+        />
+      </button>
+    </div>
   )
 }
 

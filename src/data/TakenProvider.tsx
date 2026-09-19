@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { leesCache, schrijfCache, wisCache } from '../lib/cache'
 import { verplaats } from '../lib/volgorde'
 import { leesHerhaling, volgendeDatum } from '../lib/herhaling'
+import { vierAf } from '../lib/feedback'
 import { vandaag } from '../lib/dates'
 
 interface TakenState {
@@ -282,6 +283,11 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     async (id, klaar) => {
       const taak = ruweTaken.find((t) => t.id === id)
       const herhaling = klaar ? leesHerhaling(taak?.recurrence) : null
+
+      // Hier en niet in de knop: zo klinkt het overal hetzelfde, of je nu in
+      // een lijst, op het bord of in het taakvenster afvinkt. Alleen bij
+      // afvinken - iets weer openzetten is geen prestatie.
+      if (klaar) vierAf()
 
       // Een herhalende taak gaat niet op slot maar door: hij schuift naar de
       // volgende keer en laat een afgeronde kopie achter. Anders zou je hem

@@ -54,7 +54,11 @@ Onder je naam bovenaan de zijbalk zit **Instellingen**, met twee tabbladen:
   die controle kan iedereen die even bij een open laptop komt het wachtwoord
   veranderen. Het e-mailadres zelf is er niet te wijzigen.
 - **Voortgang** - je dagelijkse doel: hoeveel taken je op een dag af wilt
-  hebben. Op 0 verdwijnt de balk op Vandaag.
+  hebben. Op 0 verdwijnt de balk op Vandaag. Daaronder staat wat je hoort en
+  voelt bij het afvinken: een kort toontje en een tikje. Het geluid wordt ter
+  plekke gemaakt met de Web Audio API, dus er hoeft geen bestand mee. Trillen
+  werkt alleen waar de browser `navigator.vibrate` kent - Safari op de iPhone
+  doet dat niet, en dan zegt de instelling dat ook.
 - **Uiterlijk** - thema: systeem, licht of donker.
 
 De naam staat in `user_metadata` van je account, niet in een eigen tabel: het
