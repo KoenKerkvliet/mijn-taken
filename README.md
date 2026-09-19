@@ -189,6 +189,15 @@ Op het bord blijft er op een telefoon bewust 2rem over naast de kolom, zodat
 de volgende er net zichtbaar naast steekt. Anders moet je maar raden of er
 nog iets is.
 
+De menupagina is daar ook karig met ruimte: alleen de stip met je initialen
+en een vergrootglas, want de knop om een taak toe te voegen zweeft toch al
+rechtsonder. In de zijbalk op een breed scherm staat je naam er gewoon bij.
+
+Uitklapmenu's (weergave, de drie puntjes, de filters op Planning) hangen in
+een laag over de pagina en meten of ze passen: zo niet, dan klappen ze naar
+boven of schuiven ze naar binnen. Op een telefoon viel er anders zo eentje
+half buiten beeld.
+
 ## Installeren als app
 
 De site is een PWA: op Android geeft Chrome "toevoegen aan startscherm", op

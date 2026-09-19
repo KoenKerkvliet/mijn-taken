@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import { Paginakop, useSchil } from '../components/Layout'
 import { Bord } from '../components/Bord'
+import { Zwever } from '../components/Zwever'
 import { opDatumGroeperen } from '../lib/groepen'
 import { paginaKlassen } from '../lib/weergave'
 
@@ -61,40 +62,34 @@ export function Planning() {
         onderschrift={`${gefilterd.length} openstaand uit al je lijsten`}
       />
 
-      <div className="mb-4 flex shrink-0 flex-wrap items-center gap-1.5">
-        {lijsten.map((l) => (
-          <Chip
-            key={l.id}
-            naam={l.name}
-            kleur={l.color}
-            aan={filter.lijsten.includes(l.id)}
-            opKlik={() => wissel('lijsten', l.id)}
-          />
-        ))}
-        <Chip
-          naam="Geen lijst"
-          kleur="#8a8fa3"
-          aan={filter.lijsten.includes('geen')}
-          opKlik={() => wissel('lijsten', 'geen')}
+      {/* Eén regel, wat er ook aan lijsten en labels bijkomt: op een
+          telefoon vraten losse knopjes anders het halve scherm op voordat je
+          de eerste taak zag. */}
+      <div className="mb-4 flex shrink-0 items-center gap-2">
+        <Keuzeknop
+          naam="Lijsten"
+          gekozen={filter.lijsten.length}
+          opties={[
+            ...lijsten.map((l) => ({ id: l.id, naam: l.name, kleur: l.color })),
+            { id: 'geen', naam: 'Geen lijst', kleur: '#8a8fa3' },
+          ]}
+          actief={filter.lijsten}
+          opWisselen={(id) => wissel('lijsten', id)}
         />
-
-        {labels.length > 0 && <span className="mx-1 h-5 w-px bg-line" />}
-        {labels.map((lb) => (
-          <Chip
-            key={lb.id}
-            naam={`#${lb.name}`}
-            kleur={lb.color}
-            aan={filter.labels.includes(lb.id)}
-            opKlik={() => wissel('labels', lb.id)}
-          />
-        ))}
+        <Keuzeknop
+          naam="Labels"
+          gekozen={filter.labels.length}
+          opties={labels.map((l) => ({ id: l.id, naam: `#${l.name}`, kleur: l.color }))}
+          actief={filter.labels}
+          opWisselen={(id) => wissel('labels', id)}
+        />
 
         {actief && (
           <button
             onClick={wissen}
-            className="ml-1 rounded-full px-2.5 py-1 text-xs text-ink-faint transition hover:text-brand"
+            className="rounded-full px-2.5 py-1 text-xs text-ink-faint transition hover:text-brand"
           >
-            Filter wissen
+            Wissen
           </button>
         )}
       </div>
@@ -104,30 +99,73 @@ export function Planning() {
   )
 }
 
-function Chip({
+function Keuzeknop({
   naam,
-  kleur,
-  aan,
-  opKlik,
+  gekozen,
+  opties,
+  actief,
+  opWisselen,
 }: {
   naam: string
-  kleur: string
-  aan: boolean
-  opKlik: () => void
+  gekozen: number
+  opties: { id: string; naam: string; kleur: string }[]
+  actief: string[]
+  opWisselen: (id: string) => void
 }) {
+  if (opties.length === 0) return null
+
   return (
-    <button
-      onClick={opKlik}
-      aria-pressed={aan}
-      className={[
-        'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition',
-        aan ? 'border-transparent font-medium text-white' : 'border-line text-ink-soft hover:border-ink-faint/50',
-      ].join(' ')}
-      style={aan ? { background: kleur } : undefined}
+    <Zwever
+      breedte={232}
+      uitlijning="links"
+      knopInhoud={
+        <>
+          {naam}
+          {gekozen > 0 && (
+            <span className="grid size-4 place-items-center rounded-full bg-brand text-[10px] font-semibold text-white">
+              {gekozen}
+            </span>
+          )}
+          <span className="text-[10px] text-ink-faint">⌄</span>
+        </>
+      }
+      knopKlassen={(open) =>
+        [
+          'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition',
+          gekozen > 0 || open
+            ? 'border-brand text-brand'
+            : 'border-line text-ink-soft hover:border-ink-faint/50',
+        ].join(' ')
+      }
     >
-      {!aan && <span className="size-2 rounded-full" style={{ background: kleur }} />}
-      {naam}
-    </button>
+      {() =>
+        opties.map((o) => {
+          const aan = actief.includes(o.id)
+          return (
+            <button
+              key={o.id}
+              role="menuitemcheckbox"
+              aria-checked={aan}
+              // Niet sluiten na een keuze: meestal vink je er meer dan één aan.
+              onClick={() => opWisselen(o.id)}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-surface-muted"
+            >
+              <span
+                className={[
+                  'grid size-4 shrink-0 place-items-center rounded border text-[10px] text-white transition',
+                  aan ? 'border-transparent' : 'border-line',
+                ].join(' ')}
+                style={aan ? { background: o.kleur } : undefined}
+              >
+                {aan && '✓'}
+              </span>
+              <span className="size-2 shrink-0 rounded-full" style={{ background: o.kleur }} />
+              <span className="flex-1 truncate">{o.naam}</span>
+            </button>
+          )
+        })
+      }
+    </Zwever>
   )
 }
 

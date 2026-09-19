@@ -1,9 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTaken } from '../data/TakenProvider'
 import { kanVerplaatsen } from '../lib/volgorde'
 import type { Label, List } from '../lib/types'
+import { Zwever } from './Zwever'
 
 interface Props {
   lijst?: List
@@ -26,41 +25,6 @@ export function Lijstmenu({ lijst, label, opBewerken, inZijbalk }: Props) {
   } = useTaken()
   const navigeer = useNavigate()
   const locatie = useLocation()
-  const [open, setOpen] = useState(false)
-  const knop = useRef<HTMLButtonElement>(null)
-  const [plek, setPlek] = useState({ top: 0, left: 0 })
-
-  // Het menu hangt in een laag over de pagina heen in plaats van in de
-  // zijbalk: die schuift, en dan zou een menu onderaan half afgesneden zijn.
-  useLayoutEffect(() => {
-    if (!open || !knop.current) return
-    const r = knop.current.getBoundingClientRect()
-    const breedte = 216
-    const hoogte = lijst ? 232 : 104
-    setPlek({
-      top: r.bottom + hoogte > window.innerHeight ? r.top - hoogte - 4 : r.bottom + 4,
-      left: Math.min(Math.max(8, r.right - breedte), window.innerWidth - breedte - 8),
-    })
-  }, [open, lijst])
-
-  useEffect(() => {
-    if (!open) return
-    function opToets(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    // Schuift er iets onder het menu vandaan, dan klopt de plek niet meer.
-    function sluit() {
-      setOpen(false)
-    }
-    window.addEventListener('keydown', opToets)
-    window.addEventListener('resize', sluit)
-    window.addEventListener('scroll', sluit, true)
-    return () => {
-      window.removeEventListener('keydown', opToets)
-      window.removeEventListener('resize', sluit)
-      window.removeEventListener('scroll', sluit, true)
-    }
-  }, [open])
 
   const alle = [...lijsten, ...gearchiveerdeLijsten]
   const opgeborgen = Boolean(lijst?.archived_at)
@@ -94,89 +58,68 @@ export function Lijstmenu({ lijst, label, opBewerken, inZijbalk }: Props) {
   }
 
   return (
-    <>
-      <button
-        ref={knop}
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setOpen((v) => !v)
-        }}
-        aria-label="Opties"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={[
+    <Zwever
+      label="Opties"
+      breedte={216}
+      knopInhoud={<span className="text-base leading-none">⋯</span>}
+      knopKlassen={(open) =>
+        [
           'grid place-items-center rounded-md text-ink-faint transition hover:bg-surface-muted hover:text-ink',
           inZijbalk
             ? // Op een telefoon bestaat aanwijzen niet, dus daar staat hij er gewoon.
               `size-7 shrink-0 ${open ? 'bg-surface-muted text-ink' : 'lg:opacity-0 lg:group-hover/regel:opacity-100'}`
             : 'size-9 border border-line bg-surface px-2',
-        ].join(' ')}
-      >
-        <span className="text-base leading-none">⋯</span>
-      </button>
+        ].join(' ')
+      }
+    >
+      {(sluit) => (
+        <>
+          <Regel icoon="✎" label="Bewerken" opKlik={() => { sluit(); opBewerken() }} />
 
-      {open &&
-        createPortal(
-          <>
-            <button
-              aria-label="Menu sluiten"
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-40 cursor-default"
-            />
-            <div
-              role="menu"
-              style={{ top: plek.top, left: plek.left, width: 216 }}
-              className="fixed z-50 overflow-hidden rounded-xl border border-line bg-surface p-1 shadow-xl"
-            >
-              <Regel icoon="✎" label="Bewerken" opKlik={() => { setOpen(false); opBewerken() }} />
-
-              {lijst && (
-                <>
-                  <Regel
-                    icoon="↑"
-                    label="Omhoog verplaatsen"
-                    uit={!kanVerplaatsen(alle, lijst.id, 'omhoog')}
-                    opKlik={() => {
-                      setOpen(false)
-                      void lijstVerplaatsen(lijst.id, 'omhoog')
-                    }}
-                  />
-                  <Regel
-                    icoon="↓"
-                    label="Omlaag verplaatsen"
-                    uit={!kanVerplaatsen(alle, lijst.id, 'omlaag')}
-                    opKlik={() => {
-                      setOpen(false)
-                      void lijstVerplaatsen(lijst.id, 'omlaag')
-                    }}
-                  />
-                  <Regel
-                    icoon={opgeborgen ? '↩' : '🗄'}
-                    label={opgeborgen ? 'Terughalen' : 'Archiveren'}
-                    opKlik={() => {
-                      setOpen(false)
-                      void archiveren()
-                    }}
-                  />
-                </>
-              )}
-
-              <div className="my-1 border-t border-line" />
+          {lijst && (
+            <>
               <Regel
-                icoon="×"
-                label="Verwijderen"
-                gevaar
+                icoon="↑"
+                label="Omhoog verplaatsen"
+                uit={!kanVerplaatsen(alle, lijst.id, 'omhoog')}
                 opKlik={() => {
-                  setOpen(false)
-                  void verwijderen()
+                  sluit()
+                  void lijstVerplaatsen(lijst.id, 'omhoog')
                 }}
               />
-            </div>
-          </>,
-          document.body,
-        )}
-    </>
+              <Regel
+                icoon="↓"
+                label="Omlaag verplaatsen"
+                uit={!kanVerplaatsen(alle, lijst.id, 'omlaag')}
+                opKlik={() => {
+                  sluit()
+                  void lijstVerplaatsen(lijst.id, 'omlaag')
+                }}
+              />
+              <Regel
+                icoon={opgeborgen ? '↩' : '🗄'}
+                label={opgeborgen ? 'Terughalen' : 'Archiveren'}
+                opKlik={() => {
+                  sluit()
+                  void archiveren()
+                }}
+              />
+            </>
+          )}
+
+          <div className="my-1 border-t border-line" />
+          <Regel
+            icoon="×"
+            label="Verwijderen"
+            gevaar
+            opKlik={() => {
+              sluit()
+              void verwijderen()
+            }}
+          />
+        </>
+      )}
+    </Zwever>
   )
 }
 

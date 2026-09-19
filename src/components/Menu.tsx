@@ -75,19 +75,43 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
         {/* Wie je bent en hoe je eruit komt, allebei bovenaan. De regel
             onderaan met een e-mailadres in muizenletters kon daarmee weg. */}
         <div className="relative flex items-center gap-2 px-3 pt-3 pb-2">
+          {/* Op een telefoon is een brede naamregel zonde van de ruimte: daar
+              is de stip met je initialen genoeg, en past het vergrootglas er
+              naast. In de zijbalk staat je naam er gewoon bij. */}
           <button
             onClick={() => setProfielOpen((v) => !v)}
             aria-expanded={profielOpen}
-            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition hover:bg-surface-muted"
+            aria-label={alsPagina ? `Menu van ${naam}` : undefined}
+            className={[
+              'flex items-center gap-2.5 rounded-lg text-left transition hover:bg-surface-muted',
+              alsPagina ? 'shrink-0 p-1' : 'min-w-0 flex-1 px-2 py-1.5',
+            ].join(' ')}
           >
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand text-xs font-bold text-white">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-xs font-bold text-white lg:size-8">
               {initialen}
             </span>
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold first-letter:uppercase">
-              {naam}
-            </span>
-            <span className="text-xs text-ink-faint">⌄</span>
+            {!alsPagina && (
+              <>
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold first-letter:uppercase">
+                  {naam}
+                </span>
+                <span className="text-xs text-ink-faint">⌄</span>
+              </>
+            )}
           </button>
+
+          {alsPagina && (
+            <>
+              <span className="flex-1" />
+              <NavLink
+                to="/zoeken"
+                aria-label="Zoeken"
+                className="grid size-10 place-items-center rounded-lg text-lg text-ink-soft transition active:bg-surface-muted"
+              >
+                🔍
+              </NavLink>
+            </>
+          )}
           {profielOpen && (
             <>
               <button
@@ -119,7 +143,7 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
           )}
         </div>
 
-        <div className="px-3 pb-1">
+        <div className={alsPagina ? 'hidden' : 'px-3 pb-1'}>
           <button
             onClick={opNieuweTaak}
             className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm font-semibold text-brand transition hover:bg-brand-soft"
@@ -133,7 +157,7 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
 
         <nav className="flex-1 overflow-y-auto px-3 pb-6">
           <ul className="space-y-0.5">
-            <Item to="/zoeken" label="Zoeken" icoon="🔍" />
+            {!alsPagina && <Item to="/zoeken" label="Zoeken" icoon="🔍" />}
             <Item to="/" label="Vandaag" icoon="☀️" aantal={aantalVandaag} nadruk={aantalTeLaat > 0} />
             <Item to="/planning" label="Planning" icoon="🗂️" aantal={aantalOpen} />
             <Item to="/agenda" label="Agenda" icoon="🗓️" />
