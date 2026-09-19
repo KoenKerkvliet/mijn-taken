@@ -14,6 +14,7 @@ import { Filterpagina } from './pages/Filterpagina'
 import { Zoeken } from './pages/Zoeken'
 import { Instellingen } from './pages/Instellingen'
 import { Planning } from './pages/Planning'
+import { Menupagina } from './pages/Menupagina'
 import { Agendapagina } from './pages/Agendapagina'
 
 // index.html zet het thema al voor de eerste tekening; dit zet ook de kleur
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')!).render(
               }
             >
               <Route path="/" element={<Vandaag />} />
+              <Route path="/menu" element={<Menupagina />} />
               <Route path="/planning" element={<Planning />} />
               <Route path="/agenda" element={<Agendapagina />} />
               {/* Niet meer in de zijbalk, wel bereikbaar: een oude snelkoppeling

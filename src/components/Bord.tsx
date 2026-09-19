@@ -131,11 +131,13 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
             }}
             className={[
               // De breedte rekent mee met de ruimte in plaats van vast te
-              // staan: op een telefoon één kolom per scherm, en op een groot
-              // scherm passen er precies vier. De aftrek is de tussenruimte,
-              // die bij n kolommen (n-1) keer meetelt.
+              // staan: op een groot scherm passen er precies vier, en de
+              // aftrek is de tussenruimte die bij n kolommen (n-1) keer
+              // meetelt. Op een telefoon blijft er bewust 2rem over: zo steekt
+              // de volgende kolom er net zichtbaar naast, en zie je dat er
+              // meer is zonder dat je het hoeft te ontdekken.
               'kolom flex shrink-0 snap-start flex-col rounded-xl border transition',
-              'w-full sm:w-[calc((100%-0.75rem)/2)] lg:w-[calc((100%-1.5rem)/3)] xl:w-[calc((100%-2.25rem)/4)]',
+              'w-[calc(100%-2rem)] sm:w-[calc((100%-0.75rem)/2)] lg:w-[calc((100%-1.5rem)/3)] xl:w-[calc((100%-2.25rem)/4)]',
               actief ? 'border-brand bg-brand-soft' : 'border-transparent',
               // Tijdens het slepen mag je zien waar de lege kolommen zitten.
               sleeptKaart && groep.taken.length === 0 ? 'border-dashed border-line' : '',

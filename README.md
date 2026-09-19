@@ -177,6 +177,18 @@ daarmee langs row level security heen; elke vraag filtert daarom met de hand op
 donderdag" rekent Claude zelf uit, zodat de taalkant op één plek blijft (in de
 app, bij het invoerveld).
 
+## Op een telefoon
+
+Op een smal scherm is het menu geen uitschuiflade maar een pagina: `/menu`,
+waar de geïnstalleerde app ook op opent. Vanaf daar tik je een onderdeel aan
+en dat opent als eigen scherm, met linksboven de weg terug. Op een breed
+scherm bestaat die pagina niet - daar staat het menu al als zijbalk naast
+alles, en stuurt `/menu` je door naar Vandaag.
+
+Op het bord blijft er op een telefoon bewust 2rem over naast de kolom, zodat
+de volgende er net zichtbaar naast steekt. Anders moet je maar raden of er
+nog iets is.
+
 ## Installeren als app
 
 De site is een PWA: op Android geeft Chrome "toevoegen aan startscherm", op

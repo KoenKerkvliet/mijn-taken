@@ -23,7 +23,7 @@ export default defineConfig({
         description: 'Alles wat moet gebeuren, op één plek.',
         lang: 'nl',
         dir: 'ltr',
-        start_url: BASIS,
+        start_url: `${BASIS}menu`,
         scope: BASIS,
         display: 'standalone',
         background_color: '#f6f7fb',

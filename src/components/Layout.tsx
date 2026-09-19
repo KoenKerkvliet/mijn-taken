@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { Zijbalk } from './Zijbalk'
+import { gebruikBreedScherm } from '../lib/scherm'
 import { TaakDialoog } from './TaakDialoog'
 import { Laadscherm } from './Laadscherm'
 import { useTaken } from '../data/TakenProvider'
@@ -19,7 +20,6 @@ export function useSchil(): Schil {
 
 export function Layout() {
   const { bezigMetLaden, fout } = useTaken()
-  const [menuOpen, setMenuOpen] = useState(false)
   const [dialoogOpen, setDialoogOpen] = useState(false)
   const [bewerkTaak, setBewerkTaak] = useState<TaskWithMeta | undefined>()
   const [standaarden, setStandaarden] = useState<{
@@ -28,6 +28,8 @@ export function Layout() {
   }>({})
   const [zoekParams, setZoekParams] = useSearchParams()
   const navigeer = useNavigate()
+  const locatie = useLocation()
+  const breed = gebruikBreedScherm()
 
   const schil: Schil = {
     bewerk(taak) {
@@ -81,26 +83,26 @@ export function Layout() {
     // 100dvh in plaats van 100%: op mobiel krimpt het scherm als de
     // adresbalk verschijnt, en dan valt de onderkant anders weg.
     <div className="flex h-[100dvh]">
-      <Zijbalk
-        open={menuOpen}
-        opSluiten={() => setMenuOpen(false)}
-        opNieuweTaak={() => {
-          setMenuOpen(false)
-          schil.nieuweTaak()
-        }}
-      />
+      {/* Op een telefoon is het menu een eigen pagina; de zijbalk hoort daar
+          dan ook niet verstopt in de pagina te blijven staan. */}
+      {breed && <Zijbalk opNieuweTaak={() => schil.nieuweTaak()} />}
 
       <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-line bg-canvas/90 px-4 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
-          <button
-            onClick={() => setMenuOpen(true)}
-            aria-label="Menu openen"
-            className="-ml-2 grid size-11 place-items-center rounded-lg text-xl text-ink-soft transition active:bg-surface-muted"
-          >
-            ☰
-          </button>
-          <span className="font-semibold tracking-tight">Mijn taken</span>
-        </header>
+        {/* Op een telefoon vertrek je vanaf het menu: elke pagina is een
+            scherm op zichzelf, met linksboven de weg terug. Het menu zelf
+            heeft die knop natuurlijk niet nodig. */}
+        {locatie.pathname !== '/menu' && (
+          <header className="sticky top-0 z-10 flex items-center gap-1 border-b border-line bg-canvas/90 px-2 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
+            <Link
+              to="/menu"
+              aria-label="Terug naar het menu"
+              className="grid size-11 place-items-center rounded-lg text-xl text-ink-soft transition active:bg-surface-muted"
+            >
+              ‹
+            </Link>
+            <span className="text-sm font-medium text-ink-soft">Menu</span>
+          </header>
+        )}
 
         {fout && (
           <p className="mx-4 mt-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-2.5 text-sm text-danger sm:mx-6">
