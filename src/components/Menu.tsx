@@ -74,7 +74,7 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
     <div className="flex min-h-0 flex-1 flex-col">
         {/* Wie je bent en hoe je eruit komt, allebei bovenaan. De regel
             onderaan met een e-mailadres in muizenletters kon daarmee weg. */}
-        <div className="relative flex items-center gap-2 px-3 pt-3 pb-2">
+        <div className={`relative flex items-center gap-2 px-3 pt-3 ${alsPagina ? 'pb-1' : 'pb-2'}`}>
           {/* Op een telefoon is een brede naamregel zonde van de ruimte: daar
               is de stip met je initialen genoeg, en past het vergrootglas er
               naast. In de zijbalk staat je naam er gewoon bij. */}
@@ -87,7 +87,7 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
               alsPagina ? 'shrink-0 p-1' : 'min-w-0 flex-1 px-2 py-1.5',
             ].join(' ')}
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-xs font-bold text-white lg:size-8">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand text-sm font-bold text-white lg:size-8 lg:text-xs">
               {initialen}
             </span>
             {!alsPagina && (
@@ -155,13 +155,23 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-6">
+        {/* Extra lucht onderaan op de telefoon: daar zweeft de knop om een
+            taak toe te voegen overheen, en die hoort het laatste label niet af
+            te dekken. */}
+        <nav className={`flex-1 overflow-y-auto px-3 ${alsPagina ? 'pb-24' : 'pb-6'}`}>
           <ul className="space-y-0.5">
             {!alsPagina && <Item to="/zoeken" label="Zoeken" icoon="🔍" />}
-            <Item to="/" label="Vandaag" icoon="☀️" aantal={aantalVandaag} nadruk={aantalTeLaat > 0} />
-            <Item to="/planning" label="Planning" icoon="🗂️" aantal={aantalOpen} />
-            <Item to="/agenda" label="Agenda" icoon="🗓️" />
-            <Item to="/klaar" label="Afgerond" icoon="✅" />
+            <Item
+              to="/"
+              label="Vandaag"
+              icoon="☀️"
+              aantal={aantalVandaag}
+              nadruk={aantalTeLaat > 0}
+              groot={alsPagina}
+            />
+            <Item to="/planning" label="Planning" icoon="🗂️" aantal={aantalOpen} groot={alsPagina} />
+            <Item to="/agenda" label="Agenda" icoon="🗓️" groot={alsPagina} />
+            <Item to="/klaar" label="Afgerond" icoon="✅" groot={alsPagina} />
           </ul>
 
           <Kop
@@ -173,6 +183,7 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
             toevoegenActief={lijstOpen}
             ingeklapt={lijstenUit}
             opKlappen={() => setLijstenUit((v) => !v)}
+            groot={alsPagina}
           />
           {lijstOpen && (
             <form onSubmit={lijstOpslaan} className="mb-2 px-2">
@@ -194,6 +205,7 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
                   lijst={l}
                   aantal={perLijst(l.id)}
                   opBewerken={() => setBewerken({ lijst: l })}
+                  groot={alsPagina}
                 />
               ))}
               {lijsten.length === 0 && !lijstOpen && (
@@ -211,6 +223,7 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
             toevoegenActief={labelOpen}
             ingeklapt={labelsUit}
             opKlappen={() => setLabelsUit((v) => !v)}
+            groot={alsPagina}
           />
           {labelOpen && (
             <form onSubmit={labelOpslaan} className="mb-2 px-2">
@@ -230,9 +243,13 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
                 <li key={lb.id} className="group/regel relative">
                   <NavLink
                     to={`/label/${lb.id}`}
-                    className={({ isActive }) => `${regelKlassen(isActive)} pr-9`}
+                    className={({ isActive }) => `${regelKlassen(isActive, alsPagina)} pr-9`}
                   >
-                    <span className="grid size-4 shrink-0 place-items-center text-ink-faint">#</span>
+                    <span
+                      className={`grid shrink-0 place-items-center text-ink-faint ${alsPagina ? 'size-5' : 'size-4'}`}
+                    >
+                      #
+                    </span>
                     <span className="flex-1 truncate" style={{ color: lb.color }}>
                       {lb.name}
                     </span>
@@ -270,6 +287,7 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
                       lijst={l}
                       aantal={0}
                       opBewerken={() => setBewerken({ lijst: l })}
+                      groot={alsPagina}
                     />
                   ))}
                 </ul>
@@ -300,22 +318,34 @@ function Lijstregel({
   lijst,
   aantal,
   opBewerken,
+  groot,
 }: {
   lijst: List
   aantal: number
   opBewerken: () => void
+  groot?: boolean
 }) {
   return (
     // De knop staat naast de link en niet erin: een knop in een link is voor
     // een schermlezer (en voor de browser) een raadsel.
     <li className="group/regel relative">
-      <NavLink to={`/lijst/${lijst.id}`} className={({ isActive }) => `${regelKlassen(isActive)} pr-9`}>
-        <span className="grid size-4 shrink-0 place-items-center">
-          <span className="size-2.5 rounded-full" style={{ background: lijst.color }} />
+      <NavLink
+        to={`/lijst/${lijst.id}`}
+        className={({ isActive }) => `${regelKlassen(isActive, groot)} pr-9`}
+      >
+        <span className={`grid shrink-0 place-items-center ${groot ? 'size-5' : 'size-4'}`}>
+          <span
+            className={`rounded-full ${groot ? 'size-3' : 'size-2.5'}`}
+            style={{ background: lijst.color }}
+          />
         </span>
         <span className="flex-1 truncate">{lijst.name}</span>
         {aantal > 0 && (
-          <span className="text-xs text-ink-faint lg:group-hover/regel:invisible">{aantal}</span>
+          <span
+            className={`text-ink-faint lg:group-hover/regel:invisible ${groot ? 'text-sm' : 'text-xs'}`}
+          >
+            {aantal}
+          </span>
         )}
       </NavLink>
       <span className="absolute inset-y-0 right-1 flex items-center">
@@ -325,9 +355,13 @@ function Lijstregel({
   )
 }
 
-function regelKlassen(actief: boolean) {
+/** Op een telefoon grotere letters in kortere regels: de tekst vult de regel
+ *  dan beter en er passen er meer op het scherm. Een tikdoel van ruim 40
+ *  pixels blijft daarmee gehaald. */
+function regelKlassen(actief: boolean, groot?: boolean) {
   return [
-    'flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] transition lg:gap-2.5 lg:py-1.5 lg:text-sm',
+    'flex items-center rounded-lg px-3 transition lg:gap-2.5 lg:py-1.5 lg:text-sm',
+    groot ? 'gap-3.5 py-2 text-[17px]' : 'gap-3 py-3 text-[15px]',
     actief ? 'bg-brand-soft font-medium text-brand' : 'text-ink-soft hover:bg-surface-muted',
   ].join(' ')
 }
@@ -338,22 +372,31 @@ function Item({
   icoon,
   aantal,
   nadruk,
+  groot,
 }: {
   to: string
   label: string
   icoon: string
   aantal?: number
   nadruk?: boolean
+  groot?: boolean
 }) {
   return (
     <li>
-      <NavLink to={to} end className={({ isActive }) => regelKlassen(isActive)}>
-        <span className="grid size-4 shrink-0 place-items-center text-base leading-none">
+      <NavLink to={to} end className={({ isActive }) => regelKlassen(isActive, groot)}>
+        <span
+          className={`grid shrink-0 place-items-center leading-none ${groot ? 'size-5 text-lg' : 'size-4 text-base'}`}
+        >
           {icoon}
         </span>
         <span className="flex-1">{label}</span>
         {aantal !== undefined && aantal > 0 && (
-          <span className={nadruk ? 'text-xs font-semibold text-danger' : 'text-xs text-ink-faint'}>
+          <span
+            className={[
+              groot ? 'text-sm' : 'text-xs',
+              nadruk ? 'font-semibold text-danger' : 'text-ink-faint',
+            ].join(' ')}
+          >
             {aantal}
           </span>
         )}
@@ -368,21 +411,25 @@ function Kop({
   toevoegenActief,
   ingeklapt,
   opKlappen,
+  groot,
 }: {
   titel: string
   opToevoegen: () => void
   toevoegenActief: boolean
   ingeklapt: boolean
   opKlappen: () => void
+  groot?: boolean
 }) {
   return (
-    <div className="group/kop mt-5 mb-1 flex items-center gap-1 pr-1 pl-3">
+    <div
+      className={`group/kop mb-0.5 flex items-center gap-1 pr-1 pl-3 ${groot ? 'mt-3' : 'mt-5'}`}
+    >
       {/* Het kopje is zelf de knop om in te klappen; met tien lijsten wil je
           de labels eronder soms even weg hebben. */}
       <button
         onClick={opKlappen}
         aria-expanded={!ingeklapt}
-        className="flex flex-1 items-center gap-1 py-1 text-left text-xs font-semibold tracking-wider text-ink-faint uppercase transition hover:text-ink-soft"
+        className={`flex flex-1 items-center gap-1 py-1 text-left font-semibold tracking-wider text-ink-faint uppercase transition hover:text-ink-soft ${groot ? 'text-[13px]' : 'text-xs'}`}
       >
         {titel}
         <span className={ingeklapt ? '-rotate-90 text-[10px]' : 'text-[10px]'}>⌄</span>

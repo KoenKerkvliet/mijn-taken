@@ -221,6 +221,9 @@ nog iets is.
 De menupagina is daar ook karig met ruimte: alleen de stip met je initialen
 en een vergrootglas, want de knop om een taak toe te voegen zweeft toch al
 rechtsonder. In de zijbalk op een breed scherm staat je naam er gewoon bij.
+De regels zijn er groter van letter en korter van hoogte dan in de zijbalk:
+zo vult de tekst de regel en passen er meer lijsten op het scherm, terwijl een
+tikdoel van ruim veertig pixels overeind blijft.
 
 Uitklapmenu's (weergave, de drie puntjes, de filters op Planning) hangen in
 een laag over de pagina en meten of ze passen: zo niet, dan klappen ze naar
