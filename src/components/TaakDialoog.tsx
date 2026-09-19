@@ -8,6 +8,7 @@ import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
 import { PRIORITEITEN } from '../lib/prioriteiten'
 import { volgendeKleur } from '../lib/kleuren'
 import { Titelveld } from './Titelveld'
+import { gebruikZichtbaarVenster } from '../lib/scherm'
 import { Vinkje } from './TaakRegel'
 
 /** 16px op mobiel, want onder die grens zoomt Safari bij het focussen in. */
@@ -43,6 +44,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [bezig, setBezig] = useState(false)
   const [nieuweSub, setNieuweSub] = useState('')
   const omschrijvingVeld = useRef<HTMLTextAreaElement>(null)
+  const venster = gebruikZichtbaarVenster()
 
   // De taak komt als momentopname binnen. Voor de subtaken kijken we naar de
   // actuele versie, anders staat een net toegevoegde subtaak er niet bij.
@@ -155,19 +157,25 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const kanOpslaan = gelezen.titel.trim().length > 0 && !bezig
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center overflow-y-auto bg-black/40 sm:items-start sm:p-4 sm:pt-[10vh]">
+    // Vastgezet op wat er van het scherm te zien is in plaats van op het hele
+    // scherm: schuift het toetsenbord omhoog, dan schuift dit venster mee en
+    // blijft het titelveld zichtbaar in plaats van eronder te verdwijnen.
+    <div
+      style={{ top: venster.top, height: venster.hoogte }}
+      className="fixed inset-x-0 z-40 flex items-end justify-center overflow-y-auto bg-black/40 sm:items-start sm:p-4 sm:pt-[10vh]"
+    >
       <button aria-label="Sluiten" className="fixed inset-0 -z-10" onClick={opSluiten} />
 
       <form
         onSubmit={opslaan}
-        className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface shadow-2xl sm:rounded-2xl"
+        className="max-h-full w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface shadow-2xl sm:max-h-[92%] sm:rounded-2xl"
       >
         <div className="p-5">
           <Titelveld
             waarde={titel}
             opWijzigen={setTitel}
             stukken={gelezen.stukken}
-            placeholder="Wat moet er gebeuren? Bijv. Verslagen nakijken vrijdag p2 #klas"
+            placeholder="Wat moet er gebeuren? Bijv. Nakijken vrijdag p2 /klas"
           />
           <textarea
             ref={omschrijvingVeld}

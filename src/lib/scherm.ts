@@ -20,3 +20,32 @@ export function gebruikBreedScherm(): boolean {
 
   return breed
 }
+
+/** Het deel van het scherm dat je echt ziet: zonder het toetsenbord dat er op
+ *  een telefoon overheen schuift.
+ *
+ *  `100dvh` helpt hier niet - dat blijft het hele scherm, ook als de helft
+ *  onder een toetsenbord zit. visualViewport weet het wel, en daarmee kan een
+ *  venster zich netjes bóven het toetsenbord zetten in plaats van eronder. */
+export function gebruikZichtbaarVenster(): { hoogte: number; top: number } {
+  const [maat, setMaat] = useState(() => ({
+    hoogte: window.visualViewport?.height ?? window.innerHeight,
+    top: window.visualViewport?.offsetTop ?? 0,
+  }))
+
+  useEffect(() => {
+    const venster = window.visualViewport
+    if (!venster) return
+
+    const meet = () => setMaat({ hoogte: venster.height, top: venster.offsetTop })
+    meet()
+    venster.addEventListener('resize', meet)
+    venster.addEventListener('scroll', meet)
+    return () => {
+      venster.removeEventListener('resize', meet)
+      venster.removeEventListener('scroll', meet)
+    }
+  }, [])
+
+  return maat
+}

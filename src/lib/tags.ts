@@ -1,7 +1,9 @@
 import type { Label, List } from './types'
 
 /** Tags in de titel: "Verslagen uitwerken #klas" hangt de taak aan lijst
- *  "Klas" en houdt "Verslagen uitwerken" over als titel.
+ *  "Klas" en houdt "Verslagen uitwerken" over als titel. Een `/` doet
+ *  hetzelfde, want op een telefoon zit de # twee toetsenborden diep en de
+ *  schuine streep gewoon naast de spatiebalk.
  *
  *  Eerst wordt er in de lijsten gezocht, daarna in de labels. Die volgorde is
  *  er omdat de zijbalk labels al als #naam toont: staat er geen lijst met die
@@ -11,8 +13,10 @@ import type { Label, List } from './types'
  *  lijst aanmaken klinkt behulpzaam, maar bij één tikfout zit je met een lijst
  *  "#klsa" die je later met de hand moet opruimen. */
 
-// Alleen na het begin of een spatie, zodat een "C#" in een titel heel blijft.
-const TAG = /(^|\s)#([\p{L}\p{N}_-]+)/gu
+// Alleen na het begin of een spatie, zodat een "C#" in een titel heel blijft
+// en een adres als site.nl/pad ook. Direct achter het teken moet een woord
+// komen: "A / B" is dus gewoon tekst.
+const TAG = /(^|\s)[#/]([\p{L}\p{N}_-]+)/gu
 
 /** Vergelijkt namen door alles weg te halen wat je niet in een tag typt:
  *  hoofdletters, accenten, spaties en leestekens. Zo vindt #werkschool ook

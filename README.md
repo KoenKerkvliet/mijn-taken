@@ -134,11 +134,16 @@ blijft de titel letterlijk staan - een oud "Rapport 5 mei bespreken" hoort niet
 bij het eerste het beste bewerken ineens "Rapport bespreken" te worden. De
 datum en prioriteit staan bij het bewerken gewoon in de velden eronder.
 
-## Snel koppelen met #
+## Snel koppelen met # of /
 
 Typ je `Verslagen uitwerken #klas`, dan komt de taak in de lijst *Klas* te
 staan en heet hij gewoon *Verslagen uitwerken*. De tag mag overal in de titel
 staan.
+
+Een `/` doet precies hetzelfde: `/klas`. Op een telefoon zit de `#` twee
+toetsenborden diep en de schuine streep gewoon naast de spatiebalk. Direct
+achter het teken moet een woord komen, dus `A / B` blijft tekst en een adres
+als `school.nl/aanmelden` blijft heel.
 
 - Hoofdletters, accenten en spaties maken niet uit: `#werkschool` vindt ook de
   lijst "Werk & school".
@@ -151,6 +156,11 @@ staan.
 - Een `#lijst` in de titel gaat voor op de keuzelijst eronder; die staat dan
   op slot. Onder het titelveld zie je live wat er opgeslagen gaat worden.
 - Een `#` midden in een woord telt niet mee, dus `C#-cursus` blijft heel.
+
+Het taakvenster hangt op een telefoon aan het zichtbare deel van het scherm
+(`visualViewport`) en niet aan het scherm zelf. Schuift het toetsenbord
+omhoog, dan schuift het venster mee; `100dvh` helpt daar niet, want dat blijft
+het hele scherm - ook het stuk dat onder het toetsenbord zit.
 
 ## Als connector in Claude
 
