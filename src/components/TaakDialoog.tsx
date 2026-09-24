@@ -56,6 +56,8 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [herinneringDatum, setHerinneringDatum] = useState('')
   const [herinneringTijd, setHerinneringTijd] = useState('')
   const [locatie, setLocatie] = useState('')
+  // Alleen op een telefoon ingeklapt, zie de knop "Meer opties" hieronder.
+  const [meerOpen, setMeerOpen] = useState(false)
   const omschrijvingVeld = useRef<HTMLTextAreaElement>(null)
   const venster = gebruikZichtbaarVenster()
 
@@ -88,6 +90,9 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     setHerinneringDatum(herinnering?.datum ?? '')
     setHerinneringTijd(herinnering?.tijd ?? '')
     setLocatie(taak?.location ?? '')
+    // Een nieuwe taak begint ingeklapt; een bestaande open je juist om de
+    // details te zien.
+    setMeerOpen(Boolean(taak))
     setBezig(false)
   }, [open, taak, standaardLijst, standaardDatum])
 
@@ -100,7 +105,9 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     if (!open || !el) return
     el.style.height = 'auto'
     el.style.height = `${el.scrollHeight}px`
-  }, [open, omschrijving])
+    // Ingeklapt is het veld onzichtbaar en meet het 0; bij uitklappen dus
+    // opnieuw meten, anders blijft het een streepje.
+  }, [open, omschrijving, meerOpen])
 
   useEffect(() => {
     if (!open) return
@@ -203,6 +210,28 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     gelezen.prioriteit !== null
   const datumVast = gelezen.datum !== null
   const prioriteitVast = gelezen.prioriteit !== null
+
+  // Op een telefoon schuift het toetsenbord het venster omhoog, en met alle
+  // velden erbij verdween de titel dan boven in beeld. Bij een nieuwe taak
+  // staat daarom alleen de titel open; de rest regel je meestal toch met
+  // tags. Wat er ingeklapt al wel is ingevuld - zoals de dag of lijst van de
+  // pagina waar je vandaan komt - staat op de knop, zodat het geen
+  // verrassing is. Op een breed scherm is er ruimte genoeg en blijft alles
+  // gewoon staan.
+  const ingeklapt = meerOpen ? '' : 'hidden sm:block'
+  const alIngevuld = [
+    !datumVast && datum ? `🗓️ ${toonDatum(datum)}` : null,
+    !gelezen.lijst && lijstId ? lijsten.find((l) => l.id === lijstId)?.name : null,
+    !prioriteitVast && prioriteit !== 4 ? `⚑ ${naamVan(prioriteit)}` : null,
+    !duurVast && duurVeld ? `⏱️ ${toonDuur(duurVeld)}` : null,
+    ...labels
+      .filter((lb) => gekozenLabels.includes(lb.id) && !gelezen.labels.includes(lb))
+      .map((lb) => `#${lb.name}`),
+    herinneringDatum ? '🔔' : null,
+    locatie.trim() ? '📍' : null,
+    omschrijving.trim() ? '📝' : null,
+  ].filter(Boolean)
+
   const kanOpslaan = gelezen.titel.trim().length > 0 && !bezig && (duurVast || !duurFout)
 
   return (
@@ -232,7 +261,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             onChange={(e) => setOmschrijving(e.target.value)}
             placeholder="Omschrijving (optioneel)"
             rows={2}
-            className="mt-2 max-h-[45dvh] w-full resize-none overflow-y-auto bg-transparent text-base leading-relaxed outline-none placeholder:text-ink-faint sm:text-sm"
+            className={`${ingeklapt} mt-2 max-h-[45dvh] w-full resize-none overflow-y-auto bg-transparent text-base leading-relaxed outline-none placeholder:text-ink-faint sm:text-sm`}
           />
 
           {(uitTitel || gelezen.onbekend.length > 0) && (
@@ -287,266 +316,285 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <input
-              type="date"
-              value={gelezen.datum ?? datum}
-              onChange={(e) => setDatum(e.target.value)}
-              disabled={datumVast}
-              title={datumVast ? 'Vastgezet door de datum in de titel' : undefined}
-              className={`${VELD} disabled:opacity-60`}
-            />
-            {!datumVast && (
-              <>
-                <SnelleDatum label="Vandaag" opKlik={() => setDatum(vandaag())} />
-                <SnelleDatum label="Morgen" opKlik={() => setDatum(overDagen(1))} />
-                <SnelleDatum label="Volgende week" opKlik={() => setDatum(overDagen(7))} />
-                {datum && <SnelleDatum label="Wissen" opKlik={() => setDatum('')} />}
-              </>
-            )}
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <select
-              value={gelezen.prioriteit ?? prioriteit}
-              onChange={(e) => setPrioriteit(Number(e.target.value) as Priority)}
-              disabled={prioriteitVast}
-              title={prioriteitVast ? `Vastgezet door p${gelezen.prioriteit} in de titel` : undefined}
-              className={`${VELD} disabled:opacity-60`}
-            >
-              {PRIORITEITEN.map((p) => (
-                <option key={p.waarde} value={p.waarde}>
-                  Prioriteit: {p.naam}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={gelezen.lijst ? gelezen.lijst.id : lijstId}
-              onChange={(e) => setLijstId(e.target.value)}
-              disabled={gelezen.lijst !== null}
-              title={gelezen.lijst ? `Vastgezet door #${gelezen.lijst.name} in de titel` : undefined}
-              className={`${VELD} disabled:opacity-60`}
-            >
-              <option value="">Inbox (geen lijst)</option>
-              {lijsten.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-
-            {/* Tekst en geen getalveld: je typt hier hetzelfde als in de
-                titel, 30m of 1u. */}
-            <input
-              value={duurVast ? toonDuur(gelezen.duur!) : duurTekst}
-              onChange={(e) => setDuurTekst(e.target.value)}
-              disabled={duurVast}
-              placeholder="Duur: 30m, 1u"
-              aria-label="Hoe lang duurt het"
-              aria-invalid={duurFout && !duurVast}
-              title={
-                duurVast
-                  ? 'Vastgezet door de duur in de titel'
-                  : duurFout
-                    ? 'Gebruik m of u, bijvoorbeeld 5m, 30m, 1u of 1u30m'
-                    : undefined
-              }
-              autoComplete="off"
-              className={`${VELD} w-32 disabled:opacity-60 ${duurFout && !duurVast ? 'border-danger focus:border-danger' : ''}`}
-            />
-          </div>
-
-          {/* Zonder tijd gaat de herinnering 's ochtends af; dat zegt het
-              grijze tekstje erachter, anders is het een verrassing. */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="w-5 shrink-0 text-center" aria-hidden>
-              🔔
+          <button
+            type="button"
+            onClick={() => setMeerOpen((v) => !v)}
+            aria-expanded={meerOpen}
+            className="mt-3 flex w-full items-center gap-2 rounded-lg py-1.5 text-left text-sm text-ink-soft transition hover:text-brand sm:hidden"
+          >
+            <span className="shrink-0">{meerOpen ? 'Minder opties' : 'Meer opties'}</span>
+            <span aria-hidden className={`shrink-0 transition ${meerOpen ? 'rotate-180' : ''}`}>
+              ⌄
             </span>
-            <input
-              type="date"
-              value={herinneringDatum}
-              onChange={(e) => setHerinneringDatum(e.target.value)}
-              aria-label="Herinnering: dag"
-              className={VELD}
-            />
-            <input
-              type="time"
-              value={herinneringTijd}
-              onChange={(e) => setHerinneringTijd(e.target.value)}
-              disabled={!herinneringDatum}
-              aria-label="Herinnering: tijd"
-              className={`${VELD} disabled:opacity-60`}
-            />
-            {herinneringDatum ? (
-              <>
-                {!herinneringTijd && (
-                  <span className="text-xs text-ink-faint">om {HERINNERING_STANDAARDTIJD}</span>
-                )}
-                <SnelleDatum
-                  label="Wissen"
-                  opKlik={() => {
-                    setHerinneringDatum('')
-                    setHerinneringTijd('')
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                <SnelleDatum
-                  label="Over 1 uur"
-                  opKlik={() => {
-                    const straks = naarVelden(new Date(Date.now() + 3_600_000).toISOString())
-                    setHerinneringDatum(straks.datum)
-                    setHerinneringTijd(straks.tijd)
-                  }}
-                />
-                <SnelleDatum
-                  label="Morgenochtend"
-                  opKlik={() => {
-                    setHerinneringDatum(overDagen(1))
-                    setHerinneringTijd(HERINNERING_STANDAARDTIJD)
-                  }}
-                />
-              </>
-            )}
-          </div>
-
-          <div className="mt-3 flex items-center gap-2">
-            <span className="w-5 shrink-0 text-center" aria-hidden>
-              📍
-            </span>
-            <input
-              value={locatie}
-              onChange={(e) => setLocatie(e.target.value)}
-              placeholder="Locatie, bijv. een adres of plek"
-              aria-label="Locatie"
-              maxLength={200}
-              autoComplete="off"
-              className={`${VELD} min-w-0 flex-1`}
-            />
-            {locatie.trim() && (
-              <a
-                href={kaartLink(locatie.trim())}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 rounded-lg border border-line px-2.5 py-2 text-xs text-ink-soft transition hover:border-brand hover:text-brand sm:py-1.5"
-              >
-                Kaart ↗
-              </a>
-            )}
-          </div>
-
-          {herhaaltNu && (
-            <p className="mt-3 flex items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-xs">
-              <span className="font-medium text-success">🔁 Herhaalt {toonHerhaling(herhaaltNu)}</span>
-              <span className="text-ink-faint">
-                Afvinken schuift hem door naar de volgende keer.
+            {!meerOpen && alIngevuld.length > 0 && (
+              <span className="min-w-0 truncate text-xs text-ink-faint">
+                {alIngevuld.join(' · ')}
               </span>
-              <button
-                type="button"
-                onClick={() => void taakBijwerken(actueel!.id, { recurrence: null })}
-                className="ml-auto shrink-0 rounded-md px-2 py-0.5 text-ink-soft transition hover:bg-danger/10 hover:text-danger"
+            )}
+          </button>
+
+          <div className={ingeklapt}>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={gelezen.datum ?? datum}
+                onChange={(e) => setDatum(e.target.value)}
+                disabled={datumVast}
+                title={datumVast ? 'Vastgezet door de datum in de titel' : undefined}
+                className={`${VELD} disabled:opacity-60`}
+              />
+              {!datumVast && (
+                <>
+                  <SnelleDatum label="Vandaag" opKlik={() => setDatum(vandaag())} />
+                  <SnelleDatum label="Morgen" opKlik={() => setDatum(overDagen(1))} />
+                  <SnelleDatum label="Volgende week" opKlik={() => setDatum(overDagen(7))} />
+                  {datum && <SnelleDatum label="Wissen" opKlik={() => setDatum('')} />}
+                </>
+              )}
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <select
+                value={gelezen.prioriteit ?? prioriteit}
+                onChange={(e) => setPrioriteit(Number(e.target.value) as Priority)}
+                disabled={prioriteitVast}
+                title={prioriteitVast ? `Vastgezet door p${gelezen.prioriteit} in de titel` : undefined}
+                className={`${VELD} disabled:opacity-60`}
               >
-                Stoppen
-              </button>
-            </p>
-          )}
-
-          {/* Alleen bij een taak die al bestaat: een subtaak heeft een ouder
-              nodig, en die is er pas na het opslaan. */}
-          {actueel && (
-            <div className="mt-4 border-t border-line pt-3">
-              <p className="mb-1.5 text-xs font-medium text-ink-soft">
-                Subtaken{' '}
-                <span className="text-ink-faint">
-                  {actueel.subtasks.filter((s) => s.completed_at).length}/{actueel.subtasks.length}
-                </span>
-              </p>
-
-              <div className="space-y-1">
-                {actueel.subtasks.map((s) => (
-                  <div key={s.id} className="group/sub flex items-center gap-2.5">
-                    <Vinkje
-                      aan={s.completed_at !== null}
-                      kleur="#94a3b8"
-                      klein
-                      opKlik={() => void taakAfvinken(s.id, s.completed_at === null)}
-                    />
-                    <span
-                      className={[
-                        'flex-1 text-sm',
-                        s.completed_at ? 'text-ink-faint line-through' : 'text-ink-soft',
-                      ].join(' ')}
-                    >
-                      {s.title}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => void taakVerwijderen(s.id)}
-                      aria-label="Subtaak verwijderen"
-                      className="grid size-8 shrink-0 place-items-center rounded-md text-ink-faint transition hover:text-danger sm:size-6 sm:opacity-0 sm:group-hover/sub:opacity-100"
-                    >
-                      ×
-                    </button>
-                  </div>
+                {PRIORITEITEN.map((p) => (
+                  <option key={p.waarde} value={p.waarde}>
+                    Prioriteit: {p.naam}
+                  </option>
                 ))}
+              </select>
 
-                {/* Een subtaak wordt meteen opgeslagen, net als in de lijst;
-                    daarom een eigen knop en geen tweede formulier in dit
-                    formulier - dat mag niet van de browser. */}
-                <div className="flex items-center gap-2.5 pt-1">
-                  <span className="size-[18px] shrink-0 rounded-full border border-dashed border-line" />
-                  <input
-                    value={nieuweSub}
-                    onChange={(e) => setNieuweSub(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return
-                      e.preventDefault()
-                      void subToevoegen()
-                    }}
-                    placeholder="Subtaak toevoegen…"
-                    className="min-w-0 flex-1 bg-transparent py-1.5 text-base outline-none placeholder:text-ink-faint sm:text-sm"
-                  />
-                  {nieuweSub.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => void subToevoegen()}
-                      className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-brand transition hover:bg-brand-soft"
-                    >
-                      Toevoegen
-                    </button>
+              <select
+                value={gelezen.lijst ? gelezen.lijst.id : lijstId}
+                onChange={(e) => setLijstId(e.target.value)}
+                disabled={gelezen.lijst !== null}
+                title={gelezen.lijst ? `Vastgezet door #${gelezen.lijst.name} in de titel` : undefined}
+                className={`${VELD} disabled:opacity-60`}
+              >
+                <option value="">Inbox (geen lijst)</option>
+                {lijsten.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Tekst en geen getalveld: je typt hier hetzelfde als in de
+                  titel, 30m of 1u. */}
+              <input
+                value={duurVast ? toonDuur(gelezen.duur!) : duurTekst}
+                onChange={(e) => setDuurTekst(e.target.value)}
+                disabled={duurVast}
+                placeholder="Duur: 30m, 1u"
+                aria-label="Hoe lang duurt het"
+                aria-invalid={duurFout && !duurVast}
+                title={
+                  duurVast
+                    ? 'Vastgezet door de duur in de titel'
+                    : duurFout
+                      ? 'Gebruik m of u, bijvoorbeeld 5m, 30m, 1u of 1u30m'
+                      : undefined
+                }
+                autoComplete="off"
+                className={`${VELD} w-32 disabled:opacity-60 ${duurFout && !duurVast ? 'border-danger focus:border-danger' : ''}`}
+              />
+            </div>
+
+            {/* Zonder tijd gaat de herinnering 's ochtends af; dat zegt het
+                grijze tekstje erachter, anders is het een verrassing. */}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="w-5 shrink-0 text-center" aria-hidden>
+                🔔
+              </span>
+              <input
+                type="date"
+                value={herinneringDatum}
+                onChange={(e) => setHerinneringDatum(e.target.value)}
+                aria-label="Herinnering: dag"
+                className={VELD}
+              />
+              <input
+                type="time"
+                value={herinneringTijd}
+                onChange={(e) => setHerinneringTijd(e.target.value)}
+                disabled={!herinneringDatum}
+                aria-label="Herinnering: tijd"
+                className={`${VELD} disabled:opacity-60`}
+              />
+              {herinneringDatum ? (
+                <>
+                  {!herinneringTijd && (
+                    <span className="text-xs text-ink-faint">om {HERINNERING_STANDAARDTIJD}</span>
                   )}
+                  <SnelleDatum
+                    label="Wissen"
+                    opKlik={() => {
+                      setHerinneringDatum('')
+                      setHerinneringTijd('')
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <SnelleDatum
+                    label="Over 1 uur"
+                    opKlik={() => {
+                      const straks = naarVelden(new Date(Date.now() + 3_600_000).toISOString())
+                      setHerinneringDatum(straks.datum)
+                      setHerinneringTijd(straks.tijd)
+                    }}
+                  />
+                  <SnelleDatum
+                    label="Morgenochtend"
+                    opKlik={() => {
+                      setHerinneringDatum(overDagen(1))
+                      setHerinneringTijd(HERINNERING_STANDAARDTIJD)
+                    }}
+                  />
+                </>
+              )}
+            </div>
+
+            <div className="mt-3 flex items-center gap-2">
+              <span className="w-5 shrink-0 text-center" aria-hidden>
+                📍
+              </span>
+              <input
+                value={locatie}
+                onChange={(e) => setLocatie(e.target.value)}
+                placeholder="Locatie, bijv. een adres of plek"
+                aria-label="Locatie"
+                maxLength={200}
+                autoComplete="off"
+                className={`${VELD} min-w-0 flex-1`}
+              />
+              {locatie.trim() && (
+                <a
+                  href={kaartLink(locatie.trim())}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 rounded-lg border border-line px-2.5 py-2 text-xs text-ink-soft transition hover:border-brand hover:text-brand sm:py-1.5"
+                >
+                  Kaart ↗
+                </a>
+              )}
+            </div>
+
+            {herhaaltNu && (
+              <p className="mt-3 flex items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-xs">
+                <span className="font-medium text-success">🔁 Herhaalt {toonHerhaling(herhaaltNu)}</span>
+                <span className="text-ink-faint">
+                  Afvinken schuift hem door naar de volgende keer.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void taakBijwerken(actueel!.id, { recurrence: null })}
+                  className="ml-auto shrink-0 rounded-md px-2 py-0.5 text-ink-soft transition hover:bg-danger/10 hover:text-danger"
+                >
+                  Stoppen
+                </button>
+              </p>
+            )}
+
+            {/* Alleen bij een taak die al bestaat: een subtaak heeft een ouder
+                nodig, en die is er pas na het opslaan. */}
+            {actueel && (
+              <div className="mt-4 border-t border-line pt-3">
+                <p className="mb-1.5 text-xs font-medium text-ink-soft">
+                  Subtaken{' '}
+                  <span className="text-ink-faint">
+                    {actueel.subtasks.filter((s) => s.completed_at).length}/{actueel.subtasks.length}
+                  </span>
+                </p>
+
+                <div className="space-y-1">
+                  {actueel.subtasks.map((s) => (
+                    <div key={s.id} className="group/sub flex items-center gap-2.5">
+                      <Vinkje
+                        aan={s.completed_at !== null}
+                        kleur="#94a3b8"
+                        klein
+                        opKlik={() => void taakAfvinken(s.id, s.completed_at === null)}
+                      />
+                      <span
+                        className={[
+                          'flex-1 text-sm',
+                          s.completed_at ? 'text-ink-faint line-through' : 'text-ink-soft',
+                        ].join(' ')}
+                      >
+                        {s.title}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void taakVerwijderen(s.id)}
+                        aria-label="Subtaak verwijderen"
+                        className="grid size-8 shrink-0 place-items-center rounded-md text-ink-faint transition hover:text-danger sm:size-6 sm:opacity-0 sm:group-hover/sub:opacity-100"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Een subtaak wordt meteen opgeslagen, net als in de lijst;
+                      daarom een eigen knop en geen tweede formulier in dit
+                      formulier - dat mag niet van de browser. */}
+                  <div className="flex items-center gap-2.5 pt-1">
+                    <span className="size-[18px] shrink-0 rounded-full border border-dashed border-line" />
+                    <input
+                      value={nieuweSub}
+                      onChange={(e) => setNieuweSub(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return
+                        e.preventDefault()
+                        void subToevoegen()
+                      }}
+                      placeholder="Subtaak toevoegen…"
+                      className="min-w-0 flex-1 bg-transparent py-1.5 text-base outline-none placeholder:text-ink-faint sm:text-sm"
+                    />
+                    {nieuweSub.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => void subToevoegen()}
+                        className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-brand transition hover:bg-brand-soft"
+                      >
+                        Toevoegen
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {labels.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {labels.map((lb) => {
-                const aan =
-                  gekozenLabels.includes(lb.id) || gelezen.labels.some((t) => t.id === lb.id)
-                return (
-                  <button
-                    key={lb.id}
-                    type="button"
-                    onClick={() => labelWisselen(lb.id)}
-                    className={[
-                      'rounded-full border px-3 py-1.5 text-xs transition sm:py-1',
-                      aan ? 'border-transparent text-white' : 'border-line text-ink-soft',
-                    ].join(' ')}
-                    style={aan ? { background: lb.color } : undefined}
-                  >
-                    #{lb.name}
-                  </button>
-                )
-              })}
-            </div>
-          )}
+            {labels.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {labels.map((lb) => {
+                  const aan =
+                    gekozenLabels.includes(lb.id) || gelezen.labels.some((t) => t.id === lb.id)
+                  return (
+                    <button
+                      key={lb.id}
+                      type="button"
+                      onClick={() => labelWisselen(lb.id)}
+                      className={[
+                        'rounded-full border px-3 py-1.5 text-xs transition sm:py-1',
+                        aan ? 'border-transparent text-white' : 'border-line text-ink-soft',
+                      ].join(' ')}
+                      style={aan ? { background: lb.color } : undefined}
+                    >
+                      #{lb.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
-          {/* Net als subtaken: alleen bij een taak die al bestaat. */}
-          {actueel && <Opmerkingen taakId={actueel.id} />}
+            {/* Net als subtaken: alleen bij een taak die al bestaat. */}
+            {actueel && <Opmerkingen taakId={actueel.id} />}
+          </div>
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
