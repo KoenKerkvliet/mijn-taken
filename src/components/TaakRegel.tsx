@@ -182,7 +182,11 @@ export function Vinkje({
     // Het rondje blijft 20 pixels, maar het gebied waar je op kunt tikken
     // groeit er met een pseudo-element 8 pixels omheen. Met marges zou de
     // hele regel verschuiven; zo blijft de uitlijning precies gelijk.
+    //
+    // type="button": in het taakvenster staat het rondje in een formulier, en
+    // zonder type slaat een klik daar de taak op en sluit het venster.
     <button
+      type="button"
       onClick={opKlik}
       aria-pressed={aan}
       aria-label={aan ? 'Markeren als open' : 'Markeren als klaar'}
