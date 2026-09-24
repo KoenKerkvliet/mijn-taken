@@ -96,3 +96,33 @@ export function vierAf(): void {
   if (feedback.geluid) speelAfgerond()
   if (feedback.trillen && kanTrillen()) navigator.vibrate(18)
 }
+
+/** Drie tonen omhoog, iets luider dan het afvinken: dit moet opvallen, ook
+ *  als je even niet naar het scherm kijkt. Een browser laat alleen geluid
+ *  toe na een klik of tik; zonder die klik blijft het stil en staat alleen
+ *  de balk er. */
+export function meldHerinnering(): void {
+  const feedback = leesFeedback()
+  if (feedback.trillen && kanTrillen()) navigator.vibrate([80, 60, 80])
+  if (!feedback.geluid) return
+
+  const ctx = geefContext()
+  if (!ctx) return
+  const nu = ctx.currentTime
+  ;[659.3, 880, 1174.7].forEach((hz, i) => {
+    const bron = ctx.createOscillator()
+    const volume = ctx.createGain()
+    const begin = nu + i * 0.14
+
+    bron.type = 'sine'
+    bron.frequency.value = hz
+    volume.gain.setValueAtTime(0.0001, begin)
+    volume.gain.exponentialRampToValueAtTime(0.14, begin + 0.015)
+    volume.gain.exponentialRampToValueAtTime(0.0001, begin + 0.3)
+
+    bron.connect(volume)
+    volume.connect(ctx.destination)
+    bron.start(begin)
+    bron.stop(begin + 0.32)
+  })
+}

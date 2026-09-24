@@ -278,7 +278,8 @@ draaien.
    SQL-editor plakken en uitvoeren. Bij een bestaand project alleen de nieuwe;
    `0002_archiveren.sql` maakt het archiveren van lijsten mogelijk en
    `0003_herhalen.sql` de herhalende taken, `0004_duur.sql` de geschatte
-   duur. Zolang een migratie niet gedraaid
+   duur en `0005_herinneringen_opmerkingen_locatie.sql` herinneringen,
+   locaties en opmerkingen. Zolang een migratie niet gedraaid
    is werkt de rest van de app gewoon, en zegt alleen dat ene onderdeel dat
    het nog niet kan.
 3. **Registratie uitzetten**: Authentication -> Sign In / Providers ->

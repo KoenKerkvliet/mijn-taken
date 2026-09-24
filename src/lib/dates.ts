@@ -86,3 +86,38 @@ export function toonAfgerond(tijdstip: string): string {
   }
   return `${d.getDate()} ${MAAND_KORT[d.getMonth()]} ${d.getFullYear()}`
 }
+
+/** Wanneer een herinnering afgaat: altijd met de tijd erbij, want daar gaat
+ *  het bij een herinnering juist om. */
+export function toonHerinnering(tijdstip: string): string {
+  const d = new Date(tijdstip)
+  const verschil = dagenVanafVandaag(toISODate(d))
+  const tijd = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+
+  if (verschil === 0) return `vandaag ${tijd}`
+  if (verschil === 1) return `morgen ${tijd}`
+  if (verschil === -1) return `gisteren ${tijd}`
+  const jaar = d.getFullYear() === new Date().getFullYear() ? '' : ` ${d.getFullYear()}`
+  return `${WEEKDAG[d.getDay()].slice(0, 2)} ${d.getDate()} ${MAAND_KORT[d.getMonth()]}${jaar} ${tijd}`
+}
+
+/** Zonder tijd gaat een herinnering 's ochtends af, bij het begin van de dag. */
+export const HERINNERING_STANDAARDTIJD = '09:00'
+
+/** Een moment uit de database terug naar wat de velden tonen: een dag en een
+ *  tijd, allebei in lokale tijd. */
+export function naarVelden(tijdstip: string): { datum: string; tijd: string } {
+  const d = new Date(tijdstip)
+  const uur = String(d.getHours()).padStart(2, '0')
+  const minuut = String(d.getMinutes()).padStart(2, '0')
+  return { datum: toISODate(d), tijd: `${uur}:${minuut}` }
+}
+
+/** Andersom: een dag en een tijd uit de velden naar een moment. Een lege tijd
+ *  wordt de standaardtijd. */
+export function uitVelden(datum: string, tijd: string): string {
+  const [u, m] = (tijd || HERINNERING_STANDAARDTIJD).split(':').map(Number)
+  const d = parseISODate(datum)
+  d.setHours(u, m, 0, 0)
+  return d.toISOString()
+}

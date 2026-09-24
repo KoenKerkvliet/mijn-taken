@@ -40,6 +40,20 @@ export type Task = {
   /** Hoe lang je denkt dat hij duurt, in minuten. Optioneel getypt om
    *  dezelfde reden als recurrence: migratie 0004. */
   duration_minutes?: number | null
+  /** Wanneer de herinnering afgaat, en wanneer je hem wegklikte. Optioneel
+   *  getypt tot migratie 0005 gedraaid is, net als location. */
+  remind_at?: string | null
+  reminded_at?: string | null
+  /** Een adres of plek, zoals je hem intypt. */
+  location?: string | null
+}
+
+export type TaskComment = {
+  id: string
+  task_id: string
+  user_id: string
+  body: string
+  created_at: string
 }
 
 /** Taak zoals de UI hem gebruikt: met zijn labels en subtaken erbij. */
@@ -52,6 +66,8 @@ export type NewTask = {
   title: string
   recurrence?: string | null
   duration_minutes?: number | null
+  remind_at?: string | null
+  location?: string | null
   description?: string | null
   due_date?: string | null
   priority?: Priority
@@ -88,6 +104,12 @@ export interface Database {
         Row: { task_id: string; label_id: string; user_id: string }
         Insert: { task_id: string; label_id: string; user_id?: string }
         Update: Partial<{ task_id: string; label_id: string; user_id: string }>
+        Relationships: []
+      }
+      task_comments: {
+        Row: TaskComment
+        Insert: Partial<TaskComment> & { task_id: string; body: string }
+        Update: Partial<TaskComment>
         Relationships: []
       }
     }

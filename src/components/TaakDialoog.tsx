@@ -2,14 +2,22 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { Priority, TaskWithMeta } from '../lib/types'
-import { overDagen, toonDatum, vandaag } from '../lib/dates'
+import {
+  HERINNERING_STANDAARDTIJD,
+  naarVelden,
+  overDagen,
+  toonDatum,
+  uitVelden,
+  vandaag,
+} from '../lib/dates'
 import { herhalingVoorOpslag, leesTitel, letterlijk } from '../lib/titel'
 import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
 import { PRIORITEITEN } from '../lib/prioriteiten'
 import { volgendeKleur } from '../lib/kleuren'
 import { Titelveld } from './Titelveld'
 import { gebruikZichtbaarVenster } from '../lib/scherm'
-import { Vinkje } from './TaakRegel'
+import { kaartLink, Vinkje } from './TaakRegel'
+import { Opmerkingen } from './Opmerkingen'
 import { leesDuur, toonDuur } from '../lib/duur'
 
 /** 16px op mobiel, want onder die grens zoomt Safari bij het focussen in. */
@@ -45,6 +53,9 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [bezig, setBezig] = useState(false)
   const [nieuweSub, setNieuweSub] = useState('')
   const [duurTekst, setDuurTekst] = useState('')
+  const [herinneringDatum, setHerinneringDatum] = useState('')
+  const [herinneringTijd, setHerinneringTijd] = useState('')
+  const [locatie, setLocatie] = useState('')
   const omschrijvingVeld = useRef<HTMLTextAreaElement>(null)
   const venster = gebruikZichtbaarVenster()
 
@@ -73,6 +84,10 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     setGekozenLabels(taak?.labelIds ?? [])
     setNieuweSub('')
     setDuurTekst(taak?.duration_minutes ? toonDuur(taak.duration_minutes) : '')
+    const herinnering = taak?.remind_at ? naarVelden(taak.remind_at) : null
+    setHerinneringDatum(herinnering?.datum ?? '')
+    setHerinneringTijd(herinnering?.tijd ?? '')
+    setLocatie(taak?.location ?? '')
     setBezig(false)
   }, [open, taak, standaardLijst, standaardDatum])
 
@@ -106,6 +121,8 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     // Wat in de titel staat wint van de velden eronder: dat heb je net
     // getypt, de velden stonden er misschien al vanaf het openen.
     const duur = gelezen.duur ?? duurVeld
+    const herinnering = herinneringDatum ? uitVelden(herinneringDatum, herinneringTijd) : null
+    const plek = locatie.trim() || null
     const velden = {
       title: gelezen.titel,
       description: omschrijving.trim() || null,
@@ -115,6 +132,10 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
       // Alleen meesturen als er iets verandert: zolang migratie 0004 niet
       // gedraaid is, bestaat de kolom niet en zou elke wijziging stuklopen.
       ...(duur !== (taak?.duration_minutes ?? null) ? { duration_minutes: duur } : {}),
+      // Hetzelfde voor 0005. Op het moment vergelijken en niet op de tekst:
+      // de database schrijft "+00:00" waar de browser "Z" schrijft.
+      ...(!zelfdeMoment(herinnering, taak?.remind_at ?? null) ? { remind_at: herinnering } : {}),
+      ...(plek !== (taak?.location ?? null) ? { location: plek } : {}),
     }
 
     const alleLabels = [...new Set([...gekozenLabels, ...gelezen.labels.map((l) => l.id)])]
@@ -336,6 +357,86 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             />
           </div>
 
+          {/* Zonder tijd gaat de herinnering 's ochtends af; dat zegt het
+              grijze tekstje erachter, anders is het een verrassing. */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="w-5 shrink-0 text-center" aria-hidden>
+              🔔
+            </span>
+            <input
+              type="date"
+              value={herinneringDatum}
+              onChange={(e) => setHerinneringDatum(e.target.value)}
+              aria-label="Herinnering: dag"
+              className={VELD}
+            />
+            <input
+              type="time"
+              value={herinneringTijd}
+              onChange={(e) => setHerinneringTijd(e.target.value)}
+              disabled={!herinneringDatum}
+              aria-label="Herinnering: tijd"
+              className={`${VELD} disabled:opacity-60`}
+            />
+            {herinneringDatum ? (
+              <>
+                {!herinneringTijd && (
+                  <span className="text-xs text-ink-faint">om {HERINNERING_STANDAARDTIJD}</span>
+                )}
+                <SnelleDatum
+                  label="Wissen"
+                  opKlik={() => {
+                    setHerinneringDatum('')
+                    setHerinneringTijd('')
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <SnelleDatum
+                  label="Over 1 uur"
+                  opKlik={() => {
+                    const straks = naarVelden(new Date(Date.now() + 3_600_000).toISOString())
+                    setHerinneringDatum(straks.datum)
+                    setHerinneringTijd(straks.tijd)
+                  }}
+                />
+                <SnelleDatum
+                  label="Morgenochtend"
+                  opKlik={() => {
+                    setHerinneringDatum(overDagen(1))
+                    setHerinneringTijd(HERINNERING_STANDAARDTIJD)
+                  }}
+                />
+              </>
+            )}
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <span className="w-5 shrink-0 text-center" aria-hidden>
+              📍
+            </span>
+            <input
+              value={locatie}
+              onChange={(e) => setLocatie(e.target.value)}
+              placeholder="Locatie, bijv. een adres of plek"
+              aria-label="Locatie"
+              maxLength={200}
+              autoComplete="off"
+              className={`${VELD} min-w-0 flex-1`}
+            />
+            {locatie.trim() && (
+              <a
+                href={kaartLink(locatie.trim())}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-lg border border-line px-2.5 py-2 text-xs text-ink-soft transition hover:border-brand hover:text-brand sm:py-1.5"
+              >
+                Kaart ↗
+              </a>
+            )}
+          </div>
+
           {herhaaltNu && (
             <p className="mt-3 flex items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-xs">
               <span className="font-medium text-success">🔁 Herhaalt {toonHerhaling(herhaaltNu)}</span>
@@ -443,6 +544,9 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
               })}
             </div>
           )}
+
+          {/* Net als subtaken: alleen bij een taak die al bestaat. */}
+          {actueel && <Opmerkingen taakId={actueel.id} />}
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
@@ -474,6 +578,11 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
       </form>
     </div>
   )
+}
+
+function zelfdeMoment(a: string | null, b: string | null): boolean {
+  if (a === null || b === null) return a === b
+  return new Date(a).getTime() === new Date(b).getTime()
 }
 
 function kleurVan(waarde: Priority): string {

@@ -132,3 +132,22 @@ html, body {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
 }
+
+/* Een herinnering schuift van boven het scherm in. Wie beweging liever
+   uitzet, krijgt hem gewoon meteen. */
+@keyframes herinnering-in {
+  from {
+    opacity: 0;
+    transform: translateY(-1.5rem);
+  }
+}
+
+.herinnering {
+  animation: herinnering-in 0.28s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .herinnering {
+    animation: none;
+  }
+}

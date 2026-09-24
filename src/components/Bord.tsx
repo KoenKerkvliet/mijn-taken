@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
 import type { Groep } from '../lib/groepen'
@@ -6,7 +6,7 @@ import { isAchterstallig, toonDatum } from '../lib/dates'
 import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
 import { toonDuur, totaleDuur } from '../lib/duur'
 import { PRIORITEITEN } from '../lib/prioriteiten'
-import { Vinkje } from './TaakRegel'
+import { Herinnering, Locatie, Vinkje } from './TaakRegel'
 
 interface Props {
   groepen: Groep[]
@@ -210,6 +210,22 @@ function Kaart({
 }) {
   const { lijsten, labels, taakAfvinken } = useTaken()
   const [gepakt, setGepakt] = useState(false)
+  const [uitgeklapt, setUitgeklapt] = useState(false)
+  const [teLang, setTeLang] = useState(false)
+  const omschrijving = useRef<HTMLSpanElement>(null)
+
+  // Of de omschrijving is afgeknipt, weet je pas als hij op het scherm staat:
+  // dat hangt af van de breedte van de kolom. Wordt de kolom smaller of
+  // breder, dan opnieuw kijken.
+  useLayoutEffect(() => {
+    const el = omschrijving.current
+    if (!el || uitgeklapt) return
+    const meet = () => setTeLang(el.scrollHeight > el.clientHeight + 1)
+    meet()
+    const waarnemer = new ResizeObserver(meet)
+    waarnemer.observe(el)
+    return () => waarnemer.disconnect()
+  }, [taak.description, uitgeklapt])
 
   const klaar = taak.completed_at !== null
   const lijst = lijsten.find((l) => l.id === taak.list_id)
@@ -243,21 +259,41 @@ function Kaart({
     >
       <div className="flex items-start gap-2.5">
         <Vinkje aan={klaar} kleur={kleur} opKlik={() => void taakAfvinken(taak.id, !klaar)} />
-        <button
-          onClick={() => opBewerken(taak)}
-          className="min-w-0 flex-1 text-left text-sm leading-snug"
-        >
-          <span className={klaar ? 'text-ink-faint line-through' : ''}>{taak.title}</span>
-          {taak.description && (
-            <span className="mt-0.5 line-clamp-2 block text-xs text-ink-soft">
-              {taak.description}
-            </span>
+        <div className="min-w-0 flex-1">
+          <button
+            onClick={() => opBewerken(taak)}
+            className="block w-full text-left text-sm leading-snug"
+          >
+            <span className={klaar ? 'text-ink-faint line-through' : ''}>{taak.title}</span>
+            {taak.description && (
+              <span
+                ref={omschrijving}
+                className={[
+                  'mt-0.5 text-xs whitespace-pre-line text-ink-soft',
+                  // Geen `block` naast line-clamp: dat zet de display terug en
+                  // dan knipt er niets meer af.
+                  uitgeklapt ? 'block' : 'line-clamp-3',
+                ].join(' ')}
+              >
+                {taak.description}
+              </span>
+            )}
+          </button>
+          {(teLang || uitgeklapt) && (
+            <button
+              onClick={() => setUitgeklapt((v) => !v)}
+              className="mt-0.5 text-xs font-medium text-brand transition hover:opacity-80"
+            >
+              {uitgeklapt ? 'Minder tonen' : 'Meer lezen'}
+            </button>
           )}
-        </button>
+        </div>
       </div>
 
       {(taak.due_date ||
         taak.duration_minutes ||
+        (taak.remind_at && !klaar) ||
+        taak.location ||
         (toonLijst && lijst) ||
         eigenLabels.length > 0 ||
         taak.subtasks.length > 0) && (
@@ -277,6 +313,8 @@ function Kaart({
               ⏱️ {toonDuur(taak.duration_minutes)}
             </span>
           )}
+          {taak.remind_at && !klaar && <Herinnering tijdstip={taak.remind_at} />}
+          {taak.location && <Locatie plek={taak.location} />}
           {/* Op een kaart is geen ruimte om subtaken uit te klappen; dit
               brengt je naar het venster waar ze staan. Een kaart zonder
               subtaken krijgt geen "0/0": daar klik je gewoon de kaart voor

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
-import { isAchterstallig, toonAfgerond, toonDatum } from '../lib/dates'
+import { isAchterstallig, toonAfgerond, toonDatum, toonHerinnering } from '../lib/dates'
 import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
 import { toonDuur } from '../lib/duur'
 import { PRIORITEITEN } from '../lib/prioriteiten'
@@ -86,6 +86,8 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
                 ⏱️ {toonDuur(taak.duration_minutes)}
               </span>
             )}
+            {taak.remind_at && !klaar && <Herinnering tijdstip={taak.remind_at} />}
+            {taak.location && <Locatie plek={taak.location} />}
             {toonLijst && lijst && (
               <span className="flex items-center gap-1 text-ink-soft">
                 <span className="size-2 rounded-full" style={{ background: lijst.color }} />
@@ -207,4 +209,32 @@ export function Vinkje({
       {aan && <span className="text-[10px] leading-none font-bold text-white">✓</span>}
     </button>
   )
+}
+
+/** Het belletje bij een taak: wanneer de herinnering afgaat. */
+export function Herinnering({ tijdstip }: { tijdstip: string }) {
+  return (
+    <span className="text-ink-soft" title="Herinnering">
+      🔔 {toonHerinnering(tijdstip)}
+    </span>
+  )
+}
+
+/** Een plek, als link naar de kaart. Op een telefoon opent dat de kaarten-app. */
+export function Locatie({ plek }: { plek: string }) {
+  return (
+    <a
+      href={kaartLink(plek)}
+      target="_blank"
+      rel="noreferrer"
+      title={`${plek} op de kaart`}
+      className="max-w-48 truncate text-ink-soft transition hover:text-brand"
+    >
+      📍 {plek}
+    </a>
+  )
+}
+
+export function kaartLink(plek: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(plek)}`
 }

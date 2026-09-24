@@ -7,7 +7,7 @@ import { leesCache, schrijfCache, wisCache } from '../lib/cache'
 import { verplaats } from '../lib/volgorde'
 import { leesHerhaling, volgendeDatum } from '../lib/herhaling'
 import { vierAf } from '../lib/feedback'
-import { vandaag } from '../lib/dates'
+import { parseISODate, vandaag } from '../lib/dates'
 
 interface TakenState {
   /** De lijsten die in de zijbalk horen: alles wat niet opgeborgen is. */
@@ -204,6 +204,8 @@ export function TakenProvider({ children }: { children: ReactNode }) {
         // niet gedraaid is, bestaat de kolom niet en zou elke taak stuklopen.
         ...(velden.recurrence ? { recurrence: velden.recurrence } : {}),
         ...(velden.duration_minutes ? { duration_minutes: velden.duration_minutes } : {}),
+        ...(velden.remind_at ? { remind_at: velden.remind_at } : {}),
+        ...(velden.location ? { location: velden.location } : {}),
       })
       .select()
       .single()
@@ -289,9 +291,14 @@ export function TakenProvider({ children }: { children: ReactNode }) {
       if (taak && herhaling) {
         const gedaan = taak.due_date ?? vandaag()
         const volgende = volgendeDatum(herhaling, gedaan)
+        // De herinnering schuift even ver mee als de datum, en gaat bij de
+        // volgende keer dus gewoon weer af.
+        const herinnering = taak.remind_at
+          ? { remind_at: schuifDagen(taak.remind_at, dagenTussen(gedaan, volgende)) }
+          : {}
 
         setRuweTaken((huidig) =>
-          huidig.map((t) => (t.id === id ? { ...t, due_date: volgende } : t)),
+          huidig.map((t) => (t.id === id ? { ...t, due_date: volgende, ...herinnering } : t)),
         )
 
         const { data: kopie, error: kopieFout } = await supabase
@@ -316,7 +323,7 @@ export function TakenProvider({ children }: { children: ReactNode }) {
 
         const { error } = await supabase
           .from('tasks')
-          .update({ due_date: volgende })
+          .update({ due_date: volgende, ...herinnering })
           .eq('id', id)
         if (error) {
           setFout(error.message)
@@ -551,7 +558,21 @@ function leesbaar(melding: string): string {
   if (melding.includes('recurrence')) return 'Herhalen kan pas als migratie 0003 in Supabase is uitgevoerd.'
   if (melding.includes('duration_minutes'))
     return 'Een duur kan pas als migratie 0004 in Supabase is uitgevoerd.'
+  if (melding.includes('remind_at') || melding.includes('location') || melding.includes('task_comments'))
+    return 'Herinneringen, locaties en opmerkingen kunnen pas als migratie 0005 in Supabase is uitgevoerd.'
   return melding
+}
+
+function dagenTussen(van: string, tot: string): number {
+  return Math.round((parseISODate(tot).getTime() - parseISODate(van).getTime()) / 86_400_000)
+}
+
+/** Via de kalender en niet via 24 uur keer zoveel: over de wisseling naar
+ *  zomertijd heen blijft 9:00 dan ook echt 9:00. */
+function schuifDagen(tijdstip: string, dagen: number): string {
+  const d = new Date(tijdstip)
+  d.setDate(d.getDate() + dagen)
+  return d.toISOString()
 }
 
 /** Afgevinkte subtaken zakken naar onderen, zodat bovenaan staat wat nog moet.

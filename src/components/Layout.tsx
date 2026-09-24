@@ -4,6 +4,7 @@ import { Zijbalk } from './Zijbalk'
 import { gebruikBreedScherm } from '../lib/scherm'
 import { TaakDialoog } from './TaakDialoog'
 import { Laadscherm } from './Laadscherm'
+import { Herinneringen } from './Herinneringen'
 import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
 
@@ -122,6 +123,8 @@ export function Layout() {
       >
         +
       </button>
+
+      <Herinneringen opOpenen={schil.bewerk} />
 
       <TaakDialoog
         open={dialoogOpen}
