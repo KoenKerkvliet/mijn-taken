@@ -199,6 +199,13 @@ supabase secrets set MCP_TOKEN=<de sleutel> MCP_USER_ID=<je user id>
 supabase functions deploy mcp
 ```
 
+**Uitrollen zonder terminal**: `.github/workflows/connector.yml` zet de
+connector online bij elke push die iets in `supabase/functions/` verandert.
+Daarvoor moet er één keer een Supabase access token (Supabase -> Account ->
+Access Tokens) als repository secret `SUPABASE_ACCESS_TOKEN` in GitHub staan.
+Zonder dat token slaat de workflow het uitrollen over. Met de hand kan het
+ook: Actions -> *Connector uitrollen* -> *Run workflow*.
+
 **Toevoegen in Claude**: instellingen -> connectors -> eigen connector, met als
 adres:
 
