@@ -49,6 +49,12 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
     const opWiel = (e: WheelEvent) => {
       // Een touchpad (of shift+wiel) stuurt zelf al opzij; niet in de weg zitten.
       if (e.deltaX !== 0 || e.shiftKey) return
+      // Boven een kolom die zelf kan scrollen hoort het wiel bij die kolom,
+      // in beide richtingen. Anders scrollt omhoog de kaarten én het bord
+      // naar links - en naar beneden alleen niet omdat het bord toevallig al
+      // rechts stond.
+      const kolom = (e.target as Element).closest('.kolombaan')
+      if (kolom && kolom.scrollHeight > kolom.clientHeight + 1) return
       const ruimte = el.scrollWidth - el.clientWidth
       if (ruimte <= 0) return
       const naarRechts = e.deltaY > 0

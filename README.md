@@ -92,6 +92,8 @@ Rechtsboven op elke pagina staat **Weergave**. Dezelfde taken, drie brillen:
   binnen het beeld. Het bord vult het scherm, zodat de schuifbalk onderaan in
   beeld staat en niet onder de langste kolom. Schuiven
   gaat met het muiswiel, of door het bord aan de achtergrond opzij te trekken.
+  Boven een kolom die zelf kan scrollen is het wiel alleen voor die kolom, dus
+  omhoog door een lange kolom laat het bord gewoon staan.
 - **Agenda** - een hele maand in beeld, met de gekozen dag eronder uitgeschreven.
   Slepen werkt hier ook, en taken zonder datum staan onder het raster klaar om
   ingepland te worden.
