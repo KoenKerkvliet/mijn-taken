@@ -133,6 +133,16 @@ html, body {
   outline-offset: 2px;
 }
 
+/* Behalve in tekstvelden: die tellen voor de browser altijd als
+   toetsenbordfocus, ook na een muisklik, en dan krijgt de titel een dikke
+   paarse lijst. Elk veld regelt zijn focus al zelf - een veld met een rand
+   kleurt die rand, en in de kale titel en omschrijving is de cursor genoeg.
+   Dit staat buiten de Tailwind-lagen, dus outline-none op het veld zelf kan
+   er niet tegenop; vandaar hier. */
+:is(input:not([type='checkbox'], [type='radio'], [type='range']), textarea, select):focus-visible {
+  outline: none;
+}
+
 /* Een herinnering schuift van boven het scherm in. Wie beweging liever
    uitzet, krijgt hem gewoon meteen. */
 @keyframes herinnering-in {
