@@ -24,6 +24,7 @@ export interface Taak {
   priority: number
   completed_at: string | null
   list_id: string | null
+  parent_id?: string | null
   duration_minutes?: number | null
   labelIds?: string[]
 }
@@ -41,12 +42,17 @@ export interface Gegevens {
     tot?: string
     limiet?: number
   }): Promise<Taak[]>
+  /** Eén taak, of null als hij er niet is (of van iemand anders). */
+  taak(id: string): Promise<Taak | null>
+  /** De subtaken van deze hoofdtaken, oudste eerst. */
+  subtaken(ouderIds: string[]): Promise<Taak[]>
   taakToevoegen(invoer: {
     title: string
     description?: string | null
     due_date?: string | null
     priority?: number
     list_id?: string | null
+    parent_id?: string | null
     duration_minutes?: number | null
     labelIds?: string[]
   }): Promise<Taak>
@@ -74,7 +80,7 @@ export const GEREEDSCHAPPEN: Gereedschap[] = [
   {
     name: 'taken_zoeken',
     description:
-      'Zoekt taken. Zonder filters krijg je alles wat openstaat. Gebruik dit ook om te zien wat er vandaag of deze week moet gebeuren.',
+      'Zoekt taken. Zonder filters krijg je alles wat openstaat. Gebruik dit ook om te zien wat er vandaag of deze week moet gebeuren. Elke taak komt met zijn subtaken (id, titel, afgerond); met dat id kun je een subtaak bijwerken of afvinken.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -113,9 +119,26 @@ export const GEREEDSCHAPPEN: Gereedschap[] = [
     },
   },
   {
+    name: 'subtaak_toevoegen',
+    description:
+      'Zet een of meer subtaken onder een bestaande taak, als afvinklijstje. Een subtaak komt in dezelfde lijst als zijn hoofdtaak. Een subtaak kan zelf geen subtaken hebben.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        hoofdtaak_id: { type: 'string', description: 'Het id van de hoofdtaak, uit taken_zoeken.' },
+        titels: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Een titel per subtaak, in de volgorde waarin ze moeten staan.',
+        },
+      },
+      required: ['hoofdtaak_id', 'titels'],
+    },
+  },
+  {
     name: 'taak_bijwerken',
     description:
-      'Past een bestaande taak aan: titel, omschrijving, datum, prioriteit, lijst of duur.',
+      'Past een bestaande taak of subtaak aan: titel, omschrijving, datum, prioriteit, lijst of duur. Bij een subtaak is de titel meestal het enige dat ertoe doet; de lijst volgt de hoofdtaak.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -132,11 +155,11 @@ export const GEREEDSCHAPPEN: Gereedschap[] = [
   },
   {
     name: 'taak_afvinken',
-    description: 'Vinkt een taak af, of zet hem weer open.',
+    description: 'Vinkt een taak of subtaak af, of zet hem weer open.',
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: 'Het id uit taken_zoeken.' },
+        id: { type: 'string', description: 'Het id van een taak of subtaak, uit taken_zoeken.' },
         klaar: { type: 'boolean', description: 'Standaard true; false zet hem weer open.' },
       },
       required: ['id'],
@@ -245,7 +268,10 @@ async function voerUit(
         tot: invoer.tot ? String(invoer.tot) : undefined,
         limiet: typeof invoer.limiet === 'number' ? invoer.limiet : 50,
       })
-      const lijsten = await db.lijsten()
+      const [lijsten, subtaken] = await Promise.all([
+        db.lijsten(),
+        db.subtaken(taken.map((t) => t.id)),
+      ])
       return JSON.stringify({
         aantal: taken.length,
         taken: taken.map((t) => ({
@@ -257,6 +283,15 @@ async function voerUit(
           lijst: lijsten.find((l) => l.id === t.list_id)?.name ?? null,
           duur_minuten: t.duration_minutes ?? null,
           afgerond: t.completed_at !== null,
+          // Alleen als er subtaken zijn: een lege lijst bij elke taak is
+          // vooral ruis in wat de assistent moet lezen.
+          ...(subtaken.some((s) => s.parent_id === t.id)
+            ? {
+                subtaken: subtaken
+                  .filter((s) => s.parent_id === t.id)
+                  .map((s) => ({ id: s.id, titel: s.title, afgerond: s.completed_at !== null })),
+              }
+            : {}),
         })),
       })
     }
@@ -285,6 +320,34 @@ async function voerUit(
       return `Toegevoegd: "${taak.title}"${taak.due_date ? ` voor ${taak.due_date}` : ''}${
         lijst ? ` in ${lijst.name}` : ''
       }. id: ${taak.id}`
+    }
+
+    case 'subtaak_toevoegen': {
+      const ouderId = String(invoer.hoofdtaak_id ?? '')
+      if (!ouderId) throw new Error('Geef het id van de hoofdtaak mee.')
+      const titels = ((invoer.titels as unknown[] | undefined) ?? [])
+        .map((t) => String(t).trim())
+        .filter(Boolean)
+      if (titels.length === 0) throw new Error('Geef minstens één titel mee.')
+
+      const ouder = await db.taak(ouderId)
+      if (!ouder) throw new Error(`Er is geen taak met id ${ouderId}.`)
+      // De app toont maar één laag: een subtaak van een subtaak zou nergens
+      // in beeld komen.
+      if (ouder.parent_id) {
+        throw new Error(
+          `"${ouder.title}" is zelf een subtaak. Gebruik de hoofdtaak (id ${ouder.parent_id}).`,
+        )
+      }
+
+      // Na elkaar in plaats van tegelijk: zo krijgen ze oplopende
+      // aanmaaktijden en staan ze in de app in de volgorde van de lijst.
+      for (const titel of titels) {
+        await db.taakToevoegen({ title: titel, parent_id: ouder.id, list_id: ouder.list_id })
+      }
+      return titels.length === 1
+        ? `Subtaak "${titels[0]}" toegevoegd aan "${ouder.title}".`
+        : `${titels.length} subtaken toegevoegd aan "${ouder.title}": ${titels.join(', ')}.`
     }
 
     case 'taak_bijwerken': {

@@ -76,6 +76,21 @@ function gegevens(db: SupabaseClient): Gegevens {
       return taken
     },
 
+    async taak(id) {
+      const { data, error } = await mijn(db.from('tasks').select('*')).eq('id', id).maybeSingle()
+      if (error) throw new Error(error.message)
+      return (data as Taak | null) ?? null
+    },
+
+    async subtaken(ouderIds) {
+      if (ouderIds.length === 0) return []
+      const { data, error } = await mijn(db.from('tasks').select('*'))
+        .in('parent_id', ouderIds)
+        .order('created_at')
+      if (error) throw new Error(error.message)
+      return (data ?? []) as Taak[]
+    },
+
     async taakToevoegen(invoer) {
       const { labelIds = [], ...velden } = invoer
       const { data, error } = await db
