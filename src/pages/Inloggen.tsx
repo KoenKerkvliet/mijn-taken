@@ -4,6 +4,9 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { Laadscherm } from '../components/Laadscherm'
 
+/** Hetzelfde plaatje als het app-icoon; zie scripts/maak-iconen.py. */
+const LOGO = `${import.meta.env.BASE_URL}icoon-192.png`
+
 export function Inloggen() {
   const { session, bezigMetLaden, inloggen } = useAuth()
   const locatie = useLocation() as { state?: { vandaan?: string } }
@@ -48,9 +51,7 @@ export function Inloggen() {
         />
         <div className="relative flex h-full flex-col justify-between p-12 text-white">
           <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-white/15 text-lg font-semibold">
-              ✓
-            </span>
+            <img src={LOGO} alt="" className="size-10 rounded-xl shadow-sm ring-1 ring-white/20" />
             <span className="text-lg font-semibold tracking-tight">Mijn taken</span>
           </div>
           <div className="max-w-md">
@@ -70,9 +71,7 @@ export function Inloggen() {
       <div className="flex items-center justify-center bg-canvas px-5 py-14 pt-[max(3.5rem,env(safe-area-inset-top))] pb-[max(3.5rem,env(safe-area-inset-bottom))] sm:px-6">
         <div className="w-full max-w-sm">
           <div className="mb-8 lg:hidden">
-            <span className="grid size-11 place-items-center rounded-xl bg-brand text-lg font-semibold text-white">
-              ✓
-            </span>
+            <img src={LOGO} alt="Mijn taken" className="size-11 rounded-xl" />
           </div>
 
           <h2 className="text-2xl font-semibold tracking-tight">Inloggen</h2>

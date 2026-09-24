@@ -15,7 +15,7 @@ export default defineConfig({
       // Pages staat. Geen "er is een update"-balk: dit is een app van één
       // gebruiker, die hoeft daar niet over na te denken.
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon-32.png', 'favicon-64.png', 'apple-touch-icon.png'],
 
       manifest: {
         name: 'Mijn taken',
@@ -32,7 +32,7 @@ export default defineConfig({
           { src: 'icoon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icoon-512.png', sizes: '512x512', type: 'image/png' },
           // Android snijdt het icoon in de vorm van het systeem; 'maskable'
-          // vult daarom tot de rand door met het vinkje in de veilige zone.
+          // vult daarom tot de rand door met het logo in de veilige zone.
           {
             src: 'icoon-maskable-512.png',
             sizes: '512x512',

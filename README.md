@@ -274,8 +274,10 @@ toevoegen, afvinken, verzetten of verwijderen past de lijst hier aan met wat
 de database terugstuurt. Opnieuw ophalen gebeurt bij het openen en wanneer je
 na een halve minuut of langer terugkomt op het tabblad.
 
-De iconen in `public/` komen uit `scripts/maak-iconen.mjs`, dat dezelfde vorm
-tekent als `favicon.svg`. Kleur veranderd? Dan `node scripts/maak-iconen.mjs`
+De iconen in `public/` - app-icoon, maskable icoon voor Android,
+apple-touch-icon en favicon - worden allemaal uitgesneden uit
+`scripts/logo.webp`. Nieuw logo? Die afbeelding vervangen en
+`python scripts/maak-iconen.py`
 draaien.
 
 ## Eenmalig instellen
