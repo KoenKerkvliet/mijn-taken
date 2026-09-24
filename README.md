@@ -277,8 +277,10 @@ de database terugstuurt. Opnieuw ophalen gebeurt bij het openen en wanneer je
 na een halve minuut of langer terugkomt op het tabblad.
 
 De iconen in `public/` - app-icoon, maskable icoon voor Android,
-apple-touch-icon en favicon - worden allemaal uitgesneden uit
-`scripts/logo.webp`. Nieuw logo? Die afbeelding vervangen en
+apple-touch-icon en favicon - komen allemaal uit `scripts/logo.png`, een
+doorzichtig logo. De app-iconen krijgen een zachte lila achtergrond (een
+doorzichtig app-icoon wordt op iOS zwart), de favicon blijft doorzichtig.
+Nieuw logo? Die afbeelding vervangen en
 `python scripts/maak-iconen.py`
 draaien.
 
