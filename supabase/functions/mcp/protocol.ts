@@ -24,6 +24,7 @@ export interface Taak {
   priority: number
   completed_at: string | null
   list_id: string | null
+  duration_minutes?: number | null
   labelIds?: string[]
 }
 
@@ -46,6 +47,7 @@ export interface Gegevens {
     due_date?: string | null
     priority?: number
     list_id?: string | null
+    duration_minutes?: number | null
     labelIds?: string[]
   }): Promise<Taak>
   taakBijwerken(id: string, wijziging: Partial<Taak>): Promise<Taak>
@@ -59,6 +61,8 @@ interface Gereedschap {
 }
 
 const DATUM = 'Datum als JJJJ-MM-DD. Reken "morgen" of "volgende week donderdag" zelf uit.'
+const DUUR =
+  'Hoe lang de taak naar schatting duurt, in minuten (1 tot 1440). "30m" is 30, "1u" is 60, "1u30m" is 90.'
 
 export const GEREEDSCHAPPEN: Gereedschap[] = [
   {
@@ -102,6 +106,7 @@ export const GEREEDSCHAPPEN: Gereedschap[] = [
           description: '1 is urgent, 2 hoog, 3 normaal, 4 laag (standaard 4).',
         },
         lijst: { type: 'string', description: 'Naam van een bestaande lijst.' },
+        duur_minuten: { type: 'number', description: DUUR },
         labels: { type: 'array', items: { type: 'string' }, description: 'Namen van labels.' },
       },
       required: ['titel'],
@@ -109,7 +114,8 @@ export const GEREEDSCHAPPEN: Gereedschap[] = [
   },
   {
     name: 'taak_bijwerken',
-    description: 'Past een bestaande taak aan: titel, omschrijving, datum, prioriteit of lijst.',
+    description:
+      'Past een bestaande taak aan: titel, omschrijving, datum, prioriteit, lijst of duur.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -119,6 +125,7 @@ export const GEREEDSCHAPPEN: Gereedschap[] = [
         datum: { type: 'string', description: `${DATUM} Geef "geen" om de datum weg te halen.` },
         prioriteit: { type: 'number' },
         lijst: { type: 'string' },
+        duur_minuten: { type: 'number', description: `${DUUR} Geef 0 om hem weg te halen.` },
       },
       required: ['id'],
     },
@@ -248,6 +255,7 @@ async function voerUit(
           datum: t.due_date,
           prioriteit: t.priority,
           lijst: lijsten.find((l) => l.id === t.list_id)?.name ?? null,
+          duur_minuten: t.duration_minutes ?? null,
           afgerond: t.completed_at !== null,
         })),
       })
@@ -269,6 +277,9 @@ async function voerUit(
         due_date: datumOf(invoer.datum),
         priority: prioriteitOf(invoer.prioriteit),
         list_id: lijst?.id ?? null,
+        // Alleen meesturen als er een is, net als in de app: zo werkt
+        // toevoegen ook zolang migratie 0004 nog niet gedraaid is.
+        ...(invoer.duur_minuten ? { duration_minutes: duurOf(invoer.duur_minuten) } : {}),
         labelIds,
       })
       return `Toegevoegd: "${taak.title}"${taak.due_date ? ` voor ${taak.due_date}` : ''}${
@@ -287,6 +298,10 @@ async function voerUit(
         wijziging.due_date = String(invoer.datum).toLowerCase() === 'geen' ? null : datumOf(invoer.datum)
       }
       if (invoer.prioriteit !== undefined) wijziging.priority = prioriteitOf(invoer.prioriteit)
+      if (invoer.duur_minuten !== undefined) {
+        wijziging.duration_minutes =
+          Number(invoer.duur_minuten) === 0 ? null : duurOf(invoer.duur_minuten)
+      }
       if (invoer.lijst !== undefined) wijziging.list_id = (await zoekLijst(db, String(invoer.lijst))).id
 
       if (Object.keys(wijziging).length === 0) throw new Error('Er viel niets te wijzigen.')
@@ -354,6 +369,14 @@ function prioriteitOf(waarde: unknown): number {
   if (waarde === undefined || waarde === null) return 4
   const n = Number(waarde)
   if (!Number.isInteger(n) || n < 1 || n > 4) throw new Error('Prioriteit is 1, 2, 3 of 4.')
+  return n
+}
+
+function duurOf(waarde: unknown): number {
+  const n = Number(waarde)
+  if (!Number.isInteger(n) || n < 1 || n > 1440) {
+    throw new Error('Duur is een heel aantal minuten, van 1 tot 1440.')
+  }
   return n
 }
 
