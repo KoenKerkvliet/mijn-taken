@@ -208,6 +208,7 @@ function Kaart({
   const klaar = taak.completed_at !== null
   const lijst = lijsten.find((l) => l.id === taak.list_id)
   const kleur = PRIORITEITEN.find((p) => p.waarde === taak.priority)?.kleur ?? '#94a3b8'
+  const metPrio = taak.priority < 4 && !klaar
   const eigenLabels = labels.filter((lb) => taak.labelIds.includes(lb.id))
   const subKlaar = taak.subtasks.filter((s) => s.completed_at).length
   const teLaat = !klaar && isAchterstallig(taak.due_date)
@@ -226,9 +227,12 @@ function Kaart({
         setGepakt(false)
         opSlepen(false)
       }}
+      // Laag is de standaard en houdt de gewone rand; anders zou elk bord
+      // vol grijze randjes staan en valt een urgente kaart minder op.
+      style={metPrio ? { borderColor: kleur } : undefined}
       className={[
         'shrink-0 rounded-xl border border-line bg-surface p-3 shadow-sm transition',
-        gepakt ? 'opacity-40' : 'hover:border-ink-faint/40',
+        gepakt ? 'opacity-40' : metPrio ? '' : 'hover:border-ink-faint/40',
       ].join(' ')}
     >
       <div className="flex items-start gap-2.5">
