@@ -4,7 +4,7 @@ import type { TaskWithMeta } from '../lib/types'
 import type { Groep } from '../lib/groepen'
 import { isAchterstallig, toonDatum } from '../lib/dates'
 import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
-import { toonDuur } from '../lib/duur'
+import { toonDuur, totaleDuur } from '../lib/duur'
 import { PRIORITEITEN } from '../lib/prioriteiten'
 import { Vinkje } from './TaakRegel'
 
@@ -114,6 +114,7 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
         // slepen zou niet weten welke datum het moest worden.
         const sleepbaar = groep.datum !== undefined
         const actief = boven === groep.sleutel
+        const duur = totaleDuur(groep.taken)
 
         return (
           <section
@@ -155,6 +156,11 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
                 {groep.titel}
               </span>
               <span className="text-xs font-medium text-ink-faint">{groep.taken.length}</span>
+              {duur > 0 && (
+                <span className="text-xs font-medium text-ink-faint" title="Geschatte duur samen">
+                  ⏱️ {toonDuur(duur)}
+                </span>
+              )}
               {groep.actie && <span className="ml-auto">{groep.actie}</span>}
             </h2>
 

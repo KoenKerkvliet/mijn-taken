@@ -3,6 +3,7 @@
  *  schrijfwijze blijft die je op een telefoon in twee tikken hebt.
  *
  *  Opgeslagen wordt het in hele minuten; "1u" en "60m" zijn dus hetzelfde. */
+import type { Task } from './types'
 
 export interface Duurtreffer {
   van: number
@@ -38,6 +39,12 @@ export function vindDuur(tekst: string): Duurtreffer | null {
 
   const van = m.index + m[1].length
   return { van, tot: m.index + m[0].length, minuten }
+}
+
+/** Wat de open taken samen aan tijd kosten, in minuten. Afgevinkt werk telt
+ *  niet mee: dat hoeft niet meer te gebeuren. */
+export function totaleDuur(taken: Pick<Task, 'completed_at' | 'duration_minutes'>[]): number {
+  return taken.reduce((som, t) => (t.completed_at ? som : som + (t.duration_minutes ?? 0)), 0)
 }
 
 /** Terug naar dezelfde schrijfwijze als je intypt: 5m, 1u, 1u30m. */

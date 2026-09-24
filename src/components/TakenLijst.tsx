@@ -1,5 +1,6 @@
 import type { TaskWithMeta } from '../lib/types'
 import { TaakRegel } from './TaakRegel'
+import { toonDuur } from '../lib/duur'
 
 interface Props {
   taken: TaskWithMeta[]
@@ -29,12 +30,15 @@ export function TakenLijst({ taken, opBewerken, toonLijst, leegTekst = 'Niets te
 export function Sectie({
   titel,
   aantal,
+  duur,
   accent,
   actie,
   children,
 }: {
   titel: string
   aantal?: number
+  /** De geschatte duur van de taken samen, in minuten. */
+  duur?: number
   accent?: boolean
   /** Knop rechts van het kopje; blijft leeg als er niets te doen valt. */
   actie?: React.ReactNode
@@ -49,6 +53,11 @@ export function Sectie({
         {aantal !== undefined && aantal > 0 && (
           <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-soft">
             {aantal}
+          </span>
+        )}
+        {duur !== undefined && duur > 0 && (
+          <span className="text-xs font-medium text-ink-faint" title="Geschatte duur samen">
+            ⏱️ {toonDuur(duur)}
           </span>
         )}
         {actie && <span className="ml-auto">{actie}</span>}

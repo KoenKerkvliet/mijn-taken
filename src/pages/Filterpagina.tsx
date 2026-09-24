@@ -9,6 +9,7 @@ import { Lijstmenu } from '../components/Lijstmenu'
 import { LijstDialoog } from '../components/LijstDialoog'
 import { opDatumGroeperen, type Groep } from '../lib/groepen'
 import { sorteerTaken } from '../lib/sorteren'
+import { toonDuur, totaleDuur } from '../lib/duur'
 import { paginaKlassen, useWeergave } from '../lib/weergave'
 
 type Soort = 'inbox' | 'klaar' | 'lijst' | 'label'
@@ -47,6 +48,8 @@ export function Filterpagina({ soort }: { soort: Soort }) {
           : [],
   )
 
+  const duur = totaleDuur(gefilterd)
+
   const afgerond = bron
     .filter((t) => t.completed_at !== null)
     .filter((t) =>
@@ -71,7 +74,9 @@ export function Filterpagina({ soort }: { soort: Soort }) {
         : soort === 'lijst'
           ? opgeborgen
             ? 'Gearchiveerd - deze taken tellen nergens mee.'
-            : `${gefilterd.length} openstaand`
+            : duur > 0
+              ? `${gefilterd.length} openstaand · ⏱️ ${toonDuur(duur)}`
+              : `${gefilterd.length} openstaand`
           : 'Alle taken met dit label.'
 
   // In de lijst blijft het één doorlopende reeks, zoals het altijd was. Op het

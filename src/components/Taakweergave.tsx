@@ -4,6 +4,7 @@ import type { Weergave } from '../lib/weergave'
 import { Sectie, TakenLijst } from './TakenLijst'
 import { Bord } from './Bord'
 import { Agenda } from './Agenda'
+import { totaleDuur } from '../lib/duur'
 
 interface Props {
   weergave: Weergave
@@ -77,6 +78,7 @@ export function Taakweergave({
             key={groep.sleutel}
             titel={groep.titel}
             aantal={groep.taken.length}
+            duur={totaleDuur(groep.taken)}
             accent={groep.accent}
             actie={groep.actie}
           >
