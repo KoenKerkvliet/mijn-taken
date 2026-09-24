@@ -4,6 +4,7 @@ import type { TaskWithMeta } from '../lib/types'
 import type { Groep } from '../lib/groepen'
 import { isAchterstallig, toonDatum } from '../lib/dates'
 import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
+import { toonDuur } from '../lib/duur'
 import { PRIORITEITEN } from '../lib/prioriteiten'
 import { Vinkje } from './TaakRegel'
 
@@ -245,7 +246,11 @@ function Kaart({
         </button>
       </div>
 
-      {(taak.due_date || (toonLijst && lijst) || eigenLabels.length > 0 || taak.subtasks.length > 0) && (
+      {(taak.due_date ||
+        taak.duration_minutes ||
+        (toonLijst && lijst) ||
+        eigenLabels.length > 0 ||
+        taak.subtasks.length > 0) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 pl-[30px] text-xs">
           {taak.due_date && (
             <span className={teLaat ? 'font-medium text-danger' : 'text-ink-soft'}>
@@ -255,6 +260,11 @@ function Kaart({
           {herhaling && (
             <span className="text-success" title={`Herhaalt ${toonHerhaling(herhaling)}`}>
               🔁
+            </span>
+          )}
+          {taak.duration_minutes && (
+            <span className="text-ink-soft" title="Geschatte duur">
+              ⏱️ {toonDuur(taak.duration_minutes)}
             </span>
           )}
           {/* Op een kaart is geen ruimte om subtaken uit te klappen; dit

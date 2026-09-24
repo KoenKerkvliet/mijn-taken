@@ -4,6 +4,7 @@ import { Statistieken } from '../components/Statistieken'
 import { Taakweergave } from '../components/Taakweergave'
 import { Weergavekiezer } from '../components/Weergavekiezer'
 import { isAchterstallig, vandaag } from '../lib/dates'
+import { toonDuur } from '../lib/duur'
 import type { Groep } from '../lib/groepen'
 import { sorteerTaken } from '../lib/sorteren'
 import { paginaKlassen, useWeergave } from '../lib/weergave'
@@ -19,6 +20,11 @@ export function Vandaag() {
   const vandaagKlaar = taken.filter(
     (t) => t.completed_at !== null && t.completed_at.slice(0, 10) === vandaag(),
   )
+
+  // Wat er nog openstaat voor vandaag, bij elkaar opgeteld. Taken zonder
+  // inschatting tellen niet mee; dan is het een ondergrens, en dat zegt het.
+  const gepland = vandaagTaken.reduce((som, t) => som + (t.duration_minutes ?? 0), 0)
+  const zonderDuur = vandaagTaken.some((t) => !t.duration_minutes)
 
   const datumTekst = new Intl.DateTimeFormat('nl-NL', {
     weekday: 'long',
@@ -78,7 +84,11 @@ export function Vandaag() {
     <div className={paginaKlassen(weergave)}>
       <Paginakop
         titel="Vandaag"
-        onderschrift={datumTekst.charAt(0).toUpperCase() + datumTekst.slice(1)}
+        onderschrift={
+          datumTekst.charAt(0).toUpperCase() +
+          datumTekst.slice(1) +
+          (gepland > 0 ? ` · ${zonderDuur ? 'minstens ' : ''}${toonDuur(gepland)} werk` : '')
+        }
         actie={
           <div className="flex flex-wrap items-center gap-2">
             <button

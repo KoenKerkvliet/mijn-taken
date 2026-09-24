@@ -37,6 +37,9 @@ export type Task = {
   /** JSON met de herhalingsregel, zie lib/herhaling.ts. Optioneel getypt,
    *  zodat de app ook werkt zolang migratie 0003 nog niet gedraaid is. */
   recurrence?: string | null
+  /** Hoe lang je denkt dat hij duurt, in minuten. Optioneel getypt om
+   *  dezelfde reden als recurrence: migratie 0004. */
+  duration_minutes?: number | null
 }
 
 /** Taak zoals de UI hem gebruikt: met zijn labels en subtaken erbij. */
@@ -48,6 +51,7 @@ export type TaskWithMeta = Task & {
 export type NewTask = {
   title: string
   recurrence?: string | null
+  duration_minutes?: number | null
   description?: string | null
   due_date?: string | null
   priority?: Priority

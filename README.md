@@ -31,8 +31,13 @@ dashboard; de startpagina is alleen een inlogscherm.
   zoeken. Hij blijft wel bestaan en staat onderaan de zijbalk onder *Archief*,
   met één klik terug te halen. Weggooien is definitief, opbergen niet.
 - **Labels** - dwars door lijsten heen filteren.
-- **Taken** - omschrijving, datum, prioriteit (1-4), subtaken, labels en
-  herhaling.
+- **Taken** - omschrijving, datum, prioriteit (1-4), geschatte duur,
+  subtaken, labels en herhaling. Verwijderen kan met het kruisje achter een
+  taak in de lijst, of vanuit het taakvenster (ook op het bord en in de
+  agenda): daar staat *Verwijderen* linksonder, altijd met een vraag ervoor.
+- **Duur** - typ `5m`, `30m`, `1u` of `1u30m` en de taak krijgt een
+  inschatting van hoe lang hij duurt. Op Vandaag staat bovenaan opgeteld
+  hoeveel werk er nog openstaat.
 - **Herhalen** - typ `elke maandag` of `elke 2 weken` en de taak komt terug.
   Afvinken zet hem door naar de volgende keer en laat een afgeronde kopie
   achter: zo staat in Afgerond wat je werkelijk gedaan hebt en telt het mee
@@ -117,6 +122,9 @@ Wat er begrepen wordt:
   langskomt; in december is `3 januari` dus volgend jaar.
 - `over drie dagen`, `over 2 weken`, `over een maand`
 - `p1` tot en met `p4` voor de prioriteit.
+- een duur: `5m`, `30m`, `1u`, `2u`, `1u30m`. Alleen `m` en `u`, los in de
+  tekst - `Step5m` en `30min` blijven gewoon staan. Langer dan `24u` telt niet.
+  In het taakvenster staat er ook een veld voor, waar je hetzelfde intypt.
 - een herhaling: `elke dag`, `elke werkdag`, `elke maandag`, `elke week`,
   `elke 2 weken`, `elke maand`, `elk jaar`. Ook `dagelijks`, `wekelijks`,
   `maandelijks` en `jaarlijks`. Staat er geen datum bij, dan begint de taak op
@@ -136,7 +144,7 @@ datum niet (`31 februari`), dan gebeurt er niets.
 Dit werkt bij het **maken** van een taak. Bewerk je een taak die er al is, dan
 blijft de titel letterlijk staan - een oud "Rapport 5 mei bespreken" hoort niet
 bij het eerste het beste bewerken ineens "Rapport bespreken" te worden. De
-datum en prioriteit staan bij het bewerken gewoon in de velden eronder.
+datum, prioriteit en duur staan bij het bewerken gewoon in de velden eronder.
 
 ## Snel koppelen met # of /
 
@@ -269,7 +277,8 @@ draaien.
 2. **Schema** draaien: de bestanden in `supabase/migrations/` op volgorde in de
    SQL-editor plakken en uitvoeren. Bij een bestaand project alleen de nieuwe;
    `0002_archiveren.sql` maakt het archiveren van lijsten mogelijk en
-   `0003_herhalen.sql` de herhalende taken. Zolang een migratie niet gedraaid
+   `0003_herhalen.sql` de herhalende taken, `0004_duur.sql` de geschatte
+   duur. Zolang een migratie niet gedraaid
    is werkt de rest van de app gewoon, en zegt alleen dat ene onderdeel dat
    het nog niet kan.
 3. **Registratie uitzetten**: Authentication -> Sign In / Providers ->

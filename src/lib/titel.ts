@@ -3,15 +3,17 @@ import { vindTags } from './tags'
 import { vindDatum } from './datumtaal'
 import { eersteDatum, schrijfHerhaling, vindHerhaling, type Herhaling } from './herhaling'
 import { kleurVanPrioriteit } from './prioriteiten'
+import { vindDuur } from './duur'
 
 /** Alles wat een titel over zichzelf verklapt: een lijst of label achter een
- *  #, een datum in gewone woorden, en een prioriteit als p1 tot en met p4.
+ *  #, een datum in gewone woorden, een prioriteit als p1 tot en met p4 en een
+ *  duur als 30m of 1u.
  *  Wat herkend wordt verdwijnt uit de titel en komt in het juiste veld terecht.
  *
  *  Eén plek voor alle drie, want ze knippen in dezelfde tekst. Los van elkaar
  *  zouden de posities na de eerste knipbeurt niet meer kloppen. */
 
-export type Soort = 'lijst' | 'label' | 'datum' | 'prioriteit' | 'herhaling'
+export type Soort = 'lijst' | 'label' | 'datum' | 'prioriteit' | 'herhaling' | 'duur'
 
 export interface Stuk {
   van: number
@@ -30,6 +32,8 @@ export interface Titeluitkomst {
   datum: string | null
   prioriteit: Priority | null
   herhaling: Herhaling | null
+  /** Geschatte duur in minuten. */
+  duur: number | null
   /** De herkende stukken, op volgorde, om ze in het veld te markeren. */
   stukken: Stuk[]
 }
@@ -48,6 +52,7 @@ export function letterlijk(ruweTitel: string): Titeluitkomst {
     datum: null,
     prioriteit: null,
     herhaling: null,
+    duur: null,
     stukken: [],
   }
 }
@@ -69,6 +74,7 @@ export function leesTitel(
     datum: null,
     prioriteit: null,
     herhaling: null,
+    duur: null,
     stukken: [],
   }
 
@@ -115,6 +121,11 @@ export function leesTitel(
     })
   }
 
+  const duur = vindDuur(ruweTitel)
+  if (duur) {
+    stukken.push({ van: duur.van, tot: duur.tot, soort: 'duur', kleur: 'var(--color-ink-soft)' })
+  }
+
   if (stukken.length === 0) return { ...kaal, onbekend: tags.onbekend }
 
   stukken.sort((a, b) => a.van - b.van)
@@ -134,6 +145,7 @@ export function leesTitel(
     datum: datum?.iso ?? (herhaling ? eersteDatum(herhaling.herhaling, nu) : null),
     prioriteit,
     herhaling: herhaling?.herhaling ?? null,
+    duur: duur?.minuten ?? null,
     stukken,
   }
 }

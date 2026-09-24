@@ -203,16 +203,13 @@ export function TakenProvider({ children }: { children: ReactNode }) {
         // Alleen meesturen als er echt een herhaling is: zolang migratie 0003
         // niet gedraaid is, bestaat de kolom niet en zou elke taak stuklopen.
         ...(velden.recurrence ? { recurrence: velden.recurrence } : {}),
+        ...(velden.duration_minutes ? { duration_minutes: velden.duration_minutes } : {}),
       })
       .select()
       .single()
 
     if (error) {
-      setFout(
-        error.message.includes('recurrence')
-          ? 'Herhalen kan pas als migratie 0003 in Supabase is uitgevoerd.'
-          : error.message,
-      )
+      setFout(leesbaar(error.message))
       return
     }
 
@@ -244,11 +241,7 @@ export function TakenProvider({ children }: { children: ReactNode }) {
         .select()
         .single()
       if (error) {
-        setFout(
-          error.message.includes('recurrence')
-            ? 'Herhalen kan pas als migratie 0003 in Supabase is uitgevoerd.'
-            : error.message,
-        )
+        setFout(leesbaar(error.message))
         return
       }
       setRuweTaken((huidig) => huidig.map((t) => (t.id === id ? (data as Task) : t)))
@@ -310,6 +303,7 @@ export function TakenProvider({ children }: { children: ReactNode }) {
             priority: taak.priority,
             list_id: taak.list_id,
             completed_at: new Date().toISOString(),
+            ...(taak.duration_minutes ? { duration_minutes: taak.duration_minutes } : {}),
           })
           .select()
           .single()
@@ -549,4 +543,13 @@ export function useTaken(): TakenState {
   const ctx = useContext(TakenContext)
   if (!ctx) throw new Error('useTaken buiten TakenProvider gebruikt')
   return ctx
+}
+
+/** Een kolom die er nog niet is geeft een foutmelding in databasetaal. Zeg
+ *  liever welke migratie er nog gedraaid moet worden. */
+function leesbaar(melding: string): string {
+  if (melding.includes('recurrence')) return 'Herhalen kan pas als migratie 0003 in Supabase is uitgevoerd.'
+  if (melding.includes('duration_minutes'))
+    return 'Een duur kan pas als migratie 0004 in Supabase is uitgevoerd.'
+  return melding
 }

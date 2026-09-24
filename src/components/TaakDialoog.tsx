@@ -10,6 +10,7 @@ import { volgendeKleur } from '../lib/kleuren'
 import { Titelveld } from './Titelveld'
 import { gebruikZichtbaarVenster } from '../lib/scherm'
 import { Vinkje } from './TaakRegel'
+import { leesDuur, toonDuur } from '../lib/duur'
 
 /** 16px op mobiel, want onder die grens zoomt Safari bij het focussen in. */
 const VELD =
@@ -43,6 +44,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [gekozenLabels, setGekozenLabels] = useState<string[]>([])
   const [bezig, setBezig] = useState(false)
   const [nieuweSub, setNieuweSub] = useState('')
+  const [duurTekst, setDuurTekst] = useState('')
   const omschrijvingVeld = useRef<HTMLTextAreaElement>(null)
   const venster = gebruikZichtbaarVenster()
 
@@ -70,6 +72,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     setLijstId(taak?.list_id ?? standaardLijst ?? '')
     setGekozenLabels(taak?.labelIds ?? [])
     setNieuweSub('')
+    setDuurTekst(taak?.duration_minutes ? toonDuur(taak.duration_minutes) : '')
     setBezig(false)
   }, [open, taak, standaardLijst, standaardDatum])
 
@@ -102,12 +105,16 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
 
     // Wat in de titel staat wint van de velden eronder: dat heb je net
     // getypt, de velden stonden er misschien al vanaf het openen.
+    const duur = gelezen.duur ?? duurVeld
     const velden = {
       title: gelezen.titel,
       description: omschrijving.trim() || null,
       due_date: gelezen.datum ?? (datum || null),
       priority: gelezen.prioriteit ?? prioriteit,
       list_id: gelezen.lijst ? gelezen.lijst.id : lijstId || null,
+      // Alleen meesturen als er iets verandert: zolang migratie 0004 niet
+      // gedraaid is, bestaat de kolom niet en zou elke wijziging stuklopen.
+      ...(duur !== (taak?.duration_minutes ?? null) ? { duration_minutes: duur } : {}),
     }
 
     const alleLabels = [...new Set([...gekozenLabels, ...gelezen.labels.map((l) => l.id)])]
@@ -120,6 +127,22 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
         recurrence: herhalingVoorOpslag(gelezen),
       })
 
+    setBezig(false)
+    opSluiten()
+  }
+
+  // Altijd met een vraag, ook zonder subtaken: de knop staat in dezelfde
+  // balk als Opslaan, en er is geen ongedaan maken.
+  async function verwijderen() {
+    if (!actueel) return
+    const zeker = window.confirm(
+      actueel.subtasks.length > 0
+        ? `"${actueel.title}" verwijderen? De ${actueel.subtasks.length} subtaken gaan mee.`
+        : `"${actueel.title}" verwijderen?`,
+    )
+    if (!zeker) return
+    setBezig(true)
+    await taakVerwijderen(actueel.id)
     setBezig(false)
     opSluiten()
   }
@@ -147,14 +170,19 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     if (nieuw) setLijstId(nieuw.id)
   }
 
+  const duurVeld = leesDuur(duurTekst)
+  const duurFout = duurTekst.trim() !== '' && duurVeld === null
+  const duurVast = gelezen.duur !== null
+
   const uitTitel =
+    gelezen.duur !== null ||
     gelezen.lijst !== null ||
     gelezen.labels.length > 0 ||
     gelezen.datum !== null ||
     gelezen.prioriteit !== null
   const datumVast = gelezen.datum !== null
   const prioriteitVast = gelezen.prioriteit !== null
-  const kanOpslaan = gelezen.titel.trim().length > 0 && !bezig
+  const kanOpslaan = gelezen.titel.trim().length > 0 && !bezig && (duurVast || !duurFout)
 
   return (
     // Vastgezet op wat er van het scherm te zien is in plaats van op het hele
@@ -208,6 +236,9 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
                 >
                   ⚑ {naamVan(gelezen.prioriteit)}
                 </span>
+              )}
+              {gelezen.duur && (
+                <span className="font-medium text-ink-soft">⏱️ {toonDuur(gelezen.duur)}</span>
               )}
               {gelezen.lijst && (
                 <span
@@ -283,6 +314,26 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
                 </option>
               ))}
             </select>
+
+            {/* Tekst en geen getalveld: je typt hier hetzelfde als in de
+                titel, 30m of 1u. */}
+            <input
+              value={duurVast ? toonDuur(gelezen.duur!) : duurTekst}
+              onChange={(e) => setDuurTekst(e.target.value)}
+              disabled={duurVast}
+              placeholder="Duur: 30m, 1u"
+              aria-label="Hoe lang duurt het"
+              aria-invalid={duurFout && !duurVast}
+              title={
+                duurVast
+                  ? 'Vastgezet door de duur in de titel'
+                  : duurFout
+                    ? 'Gebruik m of u, bijvoorbeeld 5m, 30m, 1u of 1u30m'
+                    : undefined
+              }
+              autoComplete="off"
+              className={`${VELD} w-32 disabled:opacity-60 ${duurFout && !duurVast ? 'border-danger focus:border-danger' : ''}`}
+            />
           </div>
 
           {herhaaltNu && (
@@ -394,7 +445,17 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
           )}
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
+        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
+          {taak && (
+            <button
+              type="button"
+              onClick={() => void verwijderen()}
+              disabled={bezig}
+              className="mr-auto rounded-lg px-3 py-2.5 text-sm text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50 sm:py-2"
+            >
+              Verwijderen
+            </button>
+          )}
           <button
             type="button"
             onClick={opSluiten}

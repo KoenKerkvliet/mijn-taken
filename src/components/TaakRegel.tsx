@@ -3,6 +3,7 @@ import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
 import { isAchterstallig, toonDatum } from '../lib/dates'
 import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
+import { toonDuur } from '../lib/duur'
 import { PRIORITEITEN } from '../lib/prioriteiten'
 
 interface Props {
@@ -71,6 +72,11 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
             {herhaling && (
               <span className="text-success" title={`Herhaalt ${toonHerhaling(herhaling)}`}>
                 🔁
+              </span>
+            )}
+            {taak.duration_minutes && (
+              <span className="text-ink-soft" title="Geschatte duur">
+                ⏱️ {toonDuur(taak.duration_minutes)}
               </span>
             )}
             {toonLijst && lijst && (
