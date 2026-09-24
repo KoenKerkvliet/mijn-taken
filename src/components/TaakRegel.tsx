@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTaken } from '../data/TakenProvider'
 import type { TaskWithMeta } from '../lib/types'
-import { isAchterstallig, toonDatum } from '../lib/dates'
+import { isAchterstallig, toonAfgerond, toonDatum } from '../lib/dates'
 import { leesHerhaling, toonHerhaling } from '../lib/herhaling'
 import { toonDuur } from '../lib/duur'
 import { PRIORITEITEN } from '../lib/prioriteiten'
@@ -64,7 +64,14 @@ export function TaakRegel({ taak, opBewerken, toonLijst = true }: Props) {
           )}
 
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-            {taak.due_date && (
+            {/* Bij afgevinkt werk doet de oude einddatum er niet meer toe;
+                wanneer je het deed wel. */}
+            {klaar && taak.completed_at && (
+              <span className="text-ink-faint" title="Afgevinkt">
+                ✓ {toonAfgerond(taak.completed_at)}
+              </span>
+            )}
+            {!klaar && taak.due_date && (
               <span className={teLaat ? 'font-medium text-danger' : 'text-ink-soft'}>
                 🗓️ {toonDatum(taak.due_date)}
               </span>

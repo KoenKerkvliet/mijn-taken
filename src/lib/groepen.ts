@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { parseISODate, startVanDeWeek, toISODate, toonDatum } from './dates'
+import { maandNaam, parseISODate, startVanDeWeek, toISODate, toonDatum } from './dates'
 import { sorteerTaken } from './sorteren'
 import type { TaskWithMeta } from './types'
 
@@ -83,6 +83,47 @@ export function opDatumGroeperen(taken: TaskWithMeta[], nu = new Date()): Groep[
   }
 
   return groepen.map((g) => ({ ...g, taken: sorteerTaken(g.taken) }))
+}
+
+/** Afgevinkte taken onder kopjes, nieuwste eerst: Vandaag, Gisteren, Eerder
+ *  deze week, Vorige week en daarna per maand. Een "Ouder" onderaan zou weer
+ *  de grote hoop worden waar dit juist vanaf moet; een maand blijft te
+ *  overzien, ook na een jaar. Lege kopjes vallen weg, zoals "Eerder deze week"
+ *  op een dinsdag, als maandag al Gisteren is. */
+export function opAfgerondGroeperen(taken: TaskWithMeta[], nu = new Date()): Groep[] {
+  const vandaagISO = toISODate(nu)
+  const gisterenISO = dagErbij(nu, -1)
+  const maandag = startVanDeWeek(nu)
+  const maandagISO = toISODate(maandag)
+  const vorigeMaandagISO = dagErbij(maandag, -7)
+
+  const groepen = new Map<string, Groep>()
+  const nieuwsteEerst = [...taken].sort((a, b) => (a.completed_at! < b.completed_at! ? 1 : -1))
+
+  for (const t of nieuwsteEerst) {
+    const moment = new Date(t.completed_at!)
+    const dag = toISODate(moment)
+
+    let sleutel: string
+    let titel: string
+    if (dag === vandaagISO) [sleutel, titel] = ['vandaag', 'Vandaag']
+    else if (dag === gisterenISO) [sleutel, titel] = ['gisteren', 'Gisteren']
+    else if (dag >= maandagISO) [sleutel, titel] = ['week', 'Eerder deze week']
+    else if (dag >= vorigeMaandagISO) [sleutel, titel] = ['vorigeweek', 'Vorige week']
+    else {
+      sleutel = dag.slice(0, 7)
+      const jaar = moment.getFullYear() === nu.getFullYear() ? '' : ` ${moment.getFullYear()}`
+      titel = `${maandNaam(moment)}${jaar}`
+    }
+
+    const groep = groepen.get(sleutel)
+    if (groep) groep.taken.push(t)
+    else groepen.set(sleutel, { sleutel, titel, taken: [t] })
+  }
+
+  // Een Map onthoudt de volgorde van toevoegen, en de taken kwamen al op
+  // volgorde binnen.
+  return [...groepen.values()]
 }
 
 function dagErbij(vanaf: Date, dagen: number): string {

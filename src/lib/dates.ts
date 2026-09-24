@@ -64,3 +64,25 @@ export function startVanDeWeek(d = new Date()): Date {
   kopie.setHours(0, 0, 0, 0)
   return kopie
 }
+
+const MAAND_KORT = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']
+
+/** De naam van een maand, zoals boven een groep afgevinkte taken. */
+export function maandNaam(d: Date): string {
+  return MAAND[d.getMonth()]
+}
+
+/** Wanneer een taak is afgevinkt. Dat is wel een moment, geen kale dag: kort
+ *  geleden telt de tijd, daarna alleen nog de dag. */
+export function toonAfgerond(tijdstip: string): string {
+  const d = new Date(tijdstip)
+  const verschil = dagenVanafVandaag(toISODate(d))
+  const tijd = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+
+  if (verschil === 0) return `vandaag ${tijd}`
+  if (verschil === -1) return `gisteren ${tijd}`
+  if (d.getFullYear() === new Date().getFullYear()) {
+    return `${WEEKDAG[d.getDay()].slice(0, 2)} ${d.getDate()} ${MAAND_KORT[d.getMonth()]}`
+  }
+  return `${d.getDate()} ${MAAND_KORT[d.getMonth()]} ${d.getFullYear()}`
+}
