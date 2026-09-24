@@ -177,7 +177,7 @@ export function TakenProvider({ children }: { children: ReactNode }) {
       .map((t) => ({
         ...t,
         labelIds: perTaak.get(t.id) ?? [],
-        subtasks: kinderen.get(t.id) ?? [],
+        subtasks: openEerst(kinderen.get(t.id) ?? []),
       }))
   }, [ruweTaken, koppelingen])
 
@@ -552,4 +552,10 @@ function leesbaar(melding: string): string {
   if (melding.includes('duration_minutes'))
     return 'Een duur kan pas als migratie 0004 in Supabase is uitgevoerd.'
   return melding
+}
+
+/** Afgevinkte subtaken zakken naar onderen, zodat bovenaan staat wat nog moet.
+ *  sort is stabiel: binnen open en binnen afgevinkt blijft de volgorde gelijk. */
+function openEerst(subtaken: Task[]): Task[] {
+  return subtaken.sort((a, b) => Number(a.completed_at !== null) - Number(b.completed_at !== null))
 }
