@@ -278,8 +278,12 @@ na een halve minuut of langer terugkomt op het tabblad.
 
 De iconen in `public/` - app-icoon, maskable icoon voor Android,
 apple-touch-icon en favicon - komen allemaal uit `scripts/logo.png`, een
-doorzichtig logo. De app-iconen krijgen een zachte lila achtergrond (een
-doorzichtig app-icoon wordt op iOS zwart), de favicon blijft doorzichtig.
+doorzichtig logo. Een app-icoon kan niet doorzichtig zijn (iOS maakt er zwart
+van), dus het iPhone-icoon krijgt een donkere achtergrond zoals de andere
+apps in de donkere modus, en de Android-iconen een zachte lila. Een web-app
+kan iOS geen aparte lichte en donkere variant geven. De favicon blijft
+doorzichtig. Na een nieuw icoon het `?v=` in `index.html` ophogen; op een
+iPhone moet je de app daarna opnieuw aan het beginscherm toevoegen.
 Nieuw logo? Die afbeelding vervangen en
 `python scripts/maak-iconen.py`
 draaien.

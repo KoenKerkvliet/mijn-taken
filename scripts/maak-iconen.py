@@ -1,8 +1,9 @@
 """Maakt alle iconen in public/ uit scripts/logo.png.
 
 Het logo is doorzichtig. Een app-icoon mag dat niet zijn - iOS maakt van
-doorzichtig zwart, Android een grijs vlak - dus die krijgen een zachte lila
-achtergrond. De favicon blijft wel doorzichtig: in een tabblad hoort geen
+doorzichtig zwart, Android een grijs vlak - dus die krijgen een achtergrond:
+op de iPhone donker, net als de andere apps in de donkere modus, op Android
+een zachte lila. De favicon blijft wel doorzichtig: in een tabblad hoort geen
 blok om het logo heen.
 
     python scripts/maak-iconen.py
@@ -19,15 +20,30 @@ PUBLIC = HIER.parent / "public"
 
 # Licht genoeg om het witte blad te laten staan, paars genoeg om bij de rest
 # van de app te horen.
-ACHTERGROND = (237, 233, 254, 255)
+LILA = (237, 233, 254)
+
+# Gemeten op de tegels van andere apps op een iPhone in de donkere modus: van
+# boven iets lichter naar onder iets donkerder. Een web-app kan iOS geen
+# aparte donkere variant geven, dus het beginschermicoon is altijd deze.
+DONKER_BOVEN = (32, 32, 34)
+DONKER_ONDER = (15, 15, 16)
 
 logo = Image.open(HIER / "logo.png").convert("RGBA")
 
 
-def op_vlak(schaal_logo: float, maat: int) -> Image.Image:
+def verloop(boven: tuple, onder: tuple, maat: int) -> Image.Image:
+    vlak = Image.new("RGBA", (maat, maat))
+    for y in range(maat):
+        t = y / (maat - 1)
+        kleur = tuple(round(a + (b - a) * t) for a, b in zip(boven, onder)) + (255,)
+        vlak.paste(kleur, (0, y, maat, y + 1))
+    return vlak
+
+
+def op_vlak(schaal_logo: float, maat: int, donker: bool = False) -> Image.Image:
     """Het logo op de achtergrond, `schaal_logo` van de breedte groot."""
     groot = 1024
-    vlak = Image.new("RGBA", (groot, groot), ACHTERGROND)
+    vlak = verloop(DONKER_BOVEN, DONKER_ONDER, groot) if donker else verloop(LILA, LILA, groot)
     zijde = round(groot * schaal_logo)
     klein = logo.resize((zijde, zijde), Image.LANCZOS)
     vlak.alpha_composite(klein, ((groot - zijde) // 2, (groot - zijde) // 2))
@@ -37,7 +53,7 @@ def op_vlak(schaal_logo: float, maat: int) -> Image.Image:
 # Gewone iconen. iOS rondt de hoeken zelf af, Android ook als het wil.
 op_vlak(0.78, 512).save(PUBLIC / "icoon-512.png", optimize=True)
 op_vlak(0.78, 192).save(PUBLIC / "icoon-192.png", optimize=True)
-op_vlak(0.78, 180).save(PUBLIC / "apple-touch-icon.png", optimize=True)
+op_vlak(0.78, 180, donker=True).save(PUBLIC / "apple-touch-icon.png", optimize=True)
 
 # Maskable: Android knipt er een cirkel, druppel of squircle uit. Alles wat
 # ertoe doet moet binnen de cirkel van 40% van de breedte vallen. Het logo is
