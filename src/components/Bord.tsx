@@ -133,6 +133,12 @@ export function Bord({ groepen, opBewerken, opNieuweTaak, toonLijst, lijstId = n
             onDragLeave={() => setBoven((h) => (h === groep.sleutel ? null : h))}
             onDrop={(e) => {
               setBoven(null)
+              // Hier en niet alleen bij onDragEnd van de kaart: die verhuist
+              // meteen naar zijn nieuwe kolom, en de oude kaart - die het
+              // einde van het slepen hoort te melden - bestaat dan al niet
+              // meer. Dan bleef het bord in sleepstand hangen en stonden alle
+              // lege kolommen in beeld tot je de pagina ververste.
+              setSleeptKaart(false)
               if (!sleepbaar) return
               e.preventDefault()
               const id = e.dataTransfer.getData('text/plain')
