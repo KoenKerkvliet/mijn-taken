@@ -274,7 +274,7 @@ function Kaart({
       {metPrio && (
         <span
           aria-hidden
-          className="absolute inset-y-3 -left-px w-[3px] rounded-r-full"
+          className="absolute inset-y-3 -left-px w-[2px] rounded-r-full"
           style={{ background: kleur }}
         />
       )}
