@@ -261,14 +261,23 @@ function Kaart({
         setGepakt(false)
         opSlepen(false)
       }}
-      // Laag is de standaard en houdt de gewone rand; anders zou elk bord
-      // vol grijze randjes staan en valt een urgente kaart minder op.
-      style={metPrio ? { borderColor: kleur } : undefined}
       className={[
-        'shrink-0 rounded-xl border border-line bg-surface p-3 shadow-sm transition',
-        gepakt ? 'opacity-40' : metPrio ? '' : 'hover:border-ink-faint/40',
+        'relative shrink-0 rounded-xl border border-line bg-surface p-3 shadow-sm transition',
+        gepakt ? 'opacity-40' : 'hover:border-ink-faint/40',
       ].join(' ')}
     >
+      {/* De prioriteit als staafje links in plaats van als hele rand: een
+          kaart die rondom rood is schreeuwt, en een kolom met een paar p1's
+          wordt dan een alarmbord. Laag is de standaard en krijgt niets,
+          anders valt een urgente kaart juist minder op. Een smal staafje en
+          geen dikke border-left, want die buigt lelijk mee met de hoeken. */}
+      {metPrio && (
+        <span
+          aria-hidden
+          className="absolute inset-y-3 -left-px w-[3px] rounded-r-full"
+          style={{ background: kleur }}
+        />
+      )}
       <div className="flex items-start gap-2.5">
         <Vinkje aan={klaar} kleur={kleur} opKlik={() => void taakAfvinken(taak.id, !klaar)} />
         <div className="min-w-0 flex-1">
