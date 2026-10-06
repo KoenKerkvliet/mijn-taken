@@ -7,7 +7,7 @@ import { leesCache, schrijfCache, wisCache } from '../lib/cache'
 import { verplaats } from '../lib/volgorde'
 import { leesHerhaling, volgendeDatum } from '../lib/herhaling'
 import { vierAf } from '../lib/feedback'
-import { ruimAfbeeldingenOp } from '../lib/afbeeldingen'
+import { leeslinks, miniatuurPad, ruimAfbeeldingenOp } from '../lib/afbeeldingen'
 import { parseISODate, vandaag } from '../lib/dates'
 
 interface TakenState {
@@ -23,8 +23,15 @@ interface TakenState {
   alleTaken: TaskWithMeta[]
   bezigMetLaden: boolean
   fout: string | null
+  /** Per taak het plaatje voor op de kaart: de eerste afbeelding die eraan
+   *  hangt. Taken zonder afbeelding staan er niet in. */
+  omslagen: Record<string, string>
+  /** Opnieuw kijken welke taken een afbeelding hebben, na toevoegen of
+   *  verwijderen. */
+  omslagenVernieuwen: () => Promise<void>
 
-  taakToevoegen: (invoer: NewTask) => Promise<void>
+  /** Geeft het id van de nieuwe taak terug, of null als het niet lukte. */
+  taakToevoegen: (invoer: NewTask) => Promise<string | null>
   taakBijwerken: (id: string, wijziging: Partial<Task>, labelIds?: string[]) => Promise<void>
   taakAfvinken: (id: string, klaar: boolean) => Promise<void>
   taakVerwijderen: (id: string) => Promise<void>
@@ -52,6 +59,14 @@ type Koppeling = { task_id: string; label_id: string }
  *  het tabblad. Even wegklikken en terugkomen hoort geen laadmoment te zijn. */
 const VERS_GENOEG = 30_000
 
+/** Hoe lang de leeslink van een plaatje op een kaart geldig is. Lang, want een
+ *  nieuwe link is een nieuwe url en dus een nieuwe download. */
+const OMSLAG_GELDIG = 12 * 3600
+/** Een link die over minder dan dit verloopt, wordt vervangen. */
+const OMSLAG_VERVERSEN = 3600
+
+type Omslag = { pad: string; url: string; tot: number }
+
 export function TakenProvider({ children }: { children: ReactNode }) {
   const { session, bezigMetLaden: sessieOnbekend } = useAuth()
   const [alleLijsten, setLijsten] = useState<List[]>([])
@@ -62,6 +77,56 @@ export function TakenProvider({ children }: { children: ReactNode }) {
   const [fout, setFout] = useState<string | null>(null)
   const [uitCache, setUitCache] = useState(false)
   const laatstGehaald = useRef(0)
+  const [omslagen, setOmslagen] = useState<Record<string, Omslag>>({})
+  const omslagenRef = useRef<Record<string, Omslag>>({})
+
+  // Los van de rest van het laden: de kaarten staan er meteen, en de plaatjes
+  // komen er een moment later bij. Zolang migratie 0006 niet gedraaid is geeft
+  // dit een fout en blijft het gewoon leeg.
+  const omslagenVernieuwen = useCallback(async () => {
+    if (!session) return
+    const { data, error } = await supabase
+      .from('task_attachments')
+      .select('task_id, path')
+      .order('created_at')
+    if (error || !data) return
+
+    const eerste = new Map<string, string>()
+    for (const r of data) if (!eerste.has(r.task_id)) eerste.set(r.task_id, r.path)
+
+    // Een link die nog lang genoeg geldig is blijft staan: een nieuwe link is
+    // een nieuwe url, en dus voor elke kaart een nieuwe download.
+    const nu = Date.now()
+    const huidig = omslagenRef.current
+    const goed = (taak: string, pad: string) => {
+      const h = huidig[taak]
+      return h !== undefined && h.pad === pad && h.tot - nu > OMSLAG_VERVERSEN * 1000
+    }
+    const nogNodig = [...eerste].filter(([taak, pad]) => !goed(taak, pad))
+
+    // Het kleine plaatje als dat er is, anders het grote: van voor de
+    // miniaturen bestaat alleen dat laatste.
+    const klein = await leeslinks(
+      nogNodig.map(([, pad]) => miniatuurPad(pad)),
+      OMSLAG_GELDIG,
+    )
+    const groot = await leeslinks(
+      nogNodig.filter(([, pad]) => !klein.has(miniatuurPad(pad))).map(([, pad]) => pad),
+      OMSLAG_GELDIG,
+    )
+
+    const tot = Date.now() + OMSLAG_GELDIG * 1000
+    const nieuw: Record<string, Omslag> = {}
+    for (const [taak, pad] of eerste) {
+      if (goed(taak, pad)) nieuw[taak] = huidig[taak]
+      else {
+        const url = klein.get(miniatuurPad(pad)) ?? groot.get(pad)
+        if (url) nieuw[taak] = { pad, url, tot }
+      }
+    }
+    omslagenRef.current = nieuw
+    setOmslagen(nieuw)
+  }, [session])
 
   const herladen = useCallback(async () => {
     if (!session) return
@@ -87,7 +152,8 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     setRuweTaken((t.data ?? []) as Task[])
     setKoppelingen(tl.data ?? [])
     setBezigMetLaden(false)
-  }, [session])
+    void omslagenVernieuwen()
+  }, [session, omslagenVernieuwen])
 
   useEffect(() => {
     // Zolang de sessie nog opgehaald wordt, is "niet ingelogd" niet hetzelfde
@@ -100,6 +166,8 @@ export function TakenProvider({ children }: { children: ReactNode }) {
       setLabels([])
       setRuweTaken([])
       setKoppelingen([])
+      omslagenRef.current = {}
+      setOmslagen({})
       setBezigMetLaden(false)
       // Uitgelogd is uitgelogd: dan hoort er niets van je taken achter te
       // blijven op deze computer.
@@ -213,7 +281,7 @@ export function TakenProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       setFout(leesbaar(error.message))
-      return
+      return null
     }
 
     // De rij komt terug zoals hij is opgeslagen, inclusief wat de database er
@@ -233,6 +301,7 @@ export function TakenProvider({ children }: { children: ReactNode }) {
         ])
       }
     }
+    return data.id
   }, [])
 
   const taakBijwerken = useCallback<TakenState['taakBijwerken']>(
@@ -520,7 +589,14 @@ export function TakenProvider({ children }: { children: ReactNode }) {
     setKoppelingen((huidig) => huidig.filter((k) => k.label_id !== id))
   }, [])
 
+  const omslagLinks = useMemo(
+    () => Object.fromEntries(Object.entries(omslagen).map(([taak, o]) => [taak, o.url])),
+    [omslagen],
+  )
+
   const waarde: TakenState = {
+    omslagen: omslagLinks,
+    omslagenVernieuwen,
     lijsten,
     gearchiveerdeLijsten,
     labels,

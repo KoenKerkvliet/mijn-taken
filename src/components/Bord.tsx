@@ -220,7 +220,7 @@ function Kaart({
   toonLijst?: boolean
   opSlepen: (bezig: boolean) => void
 }) {
-  const { lijsten, labels, taakAfvinken } = useTaken()
+  const { lijsten, labels, taakAfvinken, omslagen } = useTaken()
   const [gepakt, setGepakt] = useState(false)
   const [uitgeklapt, setUitgeklapt] = useState(false)
   const [teLang, setTeLang] = useState(false)
@@ -247,6 +247,7 @@ function Kaart({
   const subKlaar = taak.subtasks.filter((s) => s.completed_at).length
   const teLaat = !klaar && isAchterstallig(taak.due_date)
   const herhaling = leesHerhaling(taak.recurrence)
+  const omslag = omslagen[taak.id]
 
   return (
     <article
@@ -277,6 +278,24 @@ function Kaart({
           className="absolute inset-y-3 -left-px w-[2px] rounded-r-full"
           style={{ background: kleur }}
         />
+      )}
+      {/* Het plaatje loopt tot de rand van de kaart, zoals bij Trello. De
+          negatieve marges heffen de opvulling van de kaart op. `draggable`
+          uit, anders sleep je het plaatje los van de kaart. */}
+      {omslag && (
+        <button
+          onClick={() => opBewerken(taak)}
+          aria-label={`Open ${taak.title}`}
+          className="-mx-3 -mt-3 mb-2.5 block w-[calc(100%+1.5rem)] overflow-hidden rounded-t-xl"
+        >
+          <img
+            src={omslag}
+            alt=""
+            draggable={false}
+            loading="lazy"
+            className={['h-32 w-full object-cover', klaar ? 'opacity-50' : ''].join(' ')}
+          />
+        </button>
       )}
       <div className="flex items-start gap-2.5">
         <Vinkje aan={klaar} kleur={kleur} opKlik={() => void taakAfvinken(taak.id, !klaar)} />

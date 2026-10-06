@@ -19,6 +19,8 @@ import { gebruikZichtbaarVenster } from '../lib/scherm'
 import { kaartLink, Vinkje } from './TaakRegel'
 import { Opmerkingen } from './Opmerkingen'
 import { Afbeeldingen } from './Afbeeldingen'
+import { useAuth } from '../auth/AuthProvider'
+import { uploadAfbeelding } from '../lib/afbeeldingen'
 import { leesDuur, toonDuur } from '../lib/duur'
 
 /** 16px op mobiel, want onder die grens zoomt Safari bij het focussen in. */
@@ -44,7 +46,9 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     taakAfvinken,
     taakVerwijderen,
     lijstToevoegen,
+    omslagenVernieuwen,
   } = useTaken()
+  const { session } = useAuth()
   const [titel, setTitel] = useState('')
   const [omschrijving, setOmschrijving] = useState('')
   const [datum, setDatum] = useState('')
@@ -57,6 +61,9 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [herinneringDatum, setHerinneringDatum] = useState('')
   const [herinneringTijd, setHerinneringTijd] = useState('')
   const [locatie, setLocatie] = useState('')
+  // Afbeeldingen die je bij een nieuwe taak kiest. Er is dan nog geen taak om
+  // ze aan te hangen; ze gaan mee zodra hij is opgeslagen.
+  const [wachtend, setWachtend] = useState<File[]>([])
   // Alleen op een telefoon ingeklapt, zie de knop "Meer opties" hieronder.
   const [meerOpen, setMeerOpen] = useState(false)
   const omschrijvingVeld = useRef<HTMLTextAreaElement>(null)
@@ -91,6 +98,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     setHerinneringDatum(herinnering?.datum ?? '')
     setHerinneringTijd(herinnering?.tijd ?? '')
     setLocatie(taak?.location ?? '')
+    setWachtend([])
     // Een nieuwe taak begint ingeklapt; een bestaande open je juist om de
     // details te zien.
     setMeerOpen(Boolean(taak))
@@ -149,12 +157,30 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     const alleLabels = [...new Set([...gekozenLabels, ...gelezen.labels.map((l) => l.id)])]
 
     if (taak) await taakBijwerken(taak.id, velden, alleLabels)
-    else
-      await taakToevoegen({
+    else {
+      const nieuwId = await taakToevoegen({
         ...velden,
         labelIds: alleLabels,
         recurrence: herhalingVoorOpslag(gelezen),
       })
+      if (nieuwId && wachtend.length > 0 && session) {
+        // Het venster blijft open tot de foto's erbij zijn: sluit je het
+        // eerder, dan is de taak er wel maar de afbeelding niet.
+        let mislukt = 0
+        for (const foto of wachtend) {
+          try {
+            await uploadAfbeelding(foto, nieuwId, session.user.id)
+          } catch {
+            mislukt++
+          }
+        }
+        await omslagenVernieuwen()
+        if (mislukt > 0)
+          window.alert(
+            `De taak is gemaakt, maar ${mislukt === 1 ? 'één afbeelding' : `${mislukt} afbeeldingen`} kon${mislukt === 1 ? '' : 'den'} niet worden toegevoegd. Open de taak om het opnieuw te proberen.`,
+          )
+      }
+    }
 
     setBezig(false)
     opSluiten()
@@ -231,6 +257,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     herinneringDatum ? '🔔' : null,
     locatie.trim() ? '📍' : null,
     omschrijving.trim() ? '📝' : null,
+    !taak && wachtend.length > 0 ? '🖼️' : null,
   ].filter(Boolean)
 
   const kanOpslaan = gelezen.titel.trim().length > 0 && !bezig && (duurVast || !duurFout)
@@ -595,7 +622,11 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
 
             {/* Net als subtaken: alleen bij een taak die al bestaat. */}
             {actueel && <Opmerkingen taakId={actueel.id} />}
-            {actueel && <Afbeeldingen taakId={actueel.id} />}
+            <Afbeeldingen
+              taakId={actueel?.id ?? null}
+              wachtend={wachtend}
+              opWachtend={setWachtend}
+            />
           </div>
         </div>
 

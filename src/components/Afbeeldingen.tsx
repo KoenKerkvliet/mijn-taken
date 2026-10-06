@@ -1,31 +1,54 @@
-import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ChangeEvent, Dispatch, SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
 import type { TaskAttachment } from '../lib/types'
 import { useAuth } from '../auth/AuthProvider'
-import { BUCKET, verkleinAfbeelding } from '../lib/afbeeldingen'
+import { useTaken } from '../data/TakenProvider'
+import { BUCKET, leeslinks, miniatuurPad, uploadAfbeelding } from '../lib/afbeeldingen'
 
 /** Een uur is ruim genoeg om een taakvenster open te hebben; daarna haal je
  *  ze bij het volgende openen gewoon weer op. */
 const LINK_GELDIG = 3600
 
+type Links = Record<string, { klein: string; groot: string }>
+
+/** Wat er in het raster staat: een al opgeslagen afbeelding, of een bestand
+ *  dat wacht tot de nieuwe taak is opgeslagen. */
+type Item = { sleutel: string; naam: string; klein?: string; groot?: string; weg: () => void }
+
+interface Props {
+  /** De taak waar het bij hoort. Leeg bij een taak die nog niet bestaat: dan
+   *  blijven de bestanden in `wachtend` staan tot het venster ze uploadt. */
+  taakId: string | null
+  wachtend: File[]
+  opWachtend: Dispatch<SetStateAction<File[]>>
+}
+
 /** Afbeeldingen bij een taak, onder de opmerkingen in het taakvenster. Net als
  *  opmerkingen worden ze pas opgehaald als je de taak opent, en meteen
- *  opgeslagen, los van de knop Opslaan onderaan het venster.
+ *  opgeslagen, los van de knop Opslaan onderaan het venster. Bij een nieuwe
+ *  taak kan dat nog niet, want er is nog geen taak: daar kies je ze alvast en
+ *  gaan ze mee als je de taak toevoegt.
  *
  *  Foto's worden in de browser verkleind voordat ze de deur uit gaan. */
-export function Afbeeldingen({ taakId }: { taakId: string }) {
+export function Afbeeldingen({ taakId, wachtend, opWachtend }: Props) {
   const { session } = useAuth()
+  const { omslagenVernieuwen } = useTaken()
   const gebruikerId = session?.user.id
   const [bijlagen, setBijlagen] = useState<TaskAttachment[]>([])
-  const [links, setLinks] = useState<Record<string, string>>({})
-  const [laden, setLaden] = useState(true)
+  const [links, setLinks] = useState<Links>({})
+  const [laden, setLaden] = useState(taakId !== null)
   const [fout, setFout] = useState<string | null>(null)
   const [bezig, setBezig] = useState(0)
-  const [groot, setGroot] = useState<TaskAttachment | null>(null)
+  const [groot, setGroot] = useState<string | null>(null)
   const kiezer = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    if (!taakId) {
+      setBijlagen([])
+      setLaden(false)
+      return
+    }
     let weg = false
     setLaden(true)
     void (async () => {
@@ -52,35 +75,38 @@ export function Afbeeldingen({ taakId }: { taakId: string }) {
     }
   }, [taakId])
 
+  // Voorbeelden van de bestanden die nog moeten worden geüpload.
+  const voorbeelden = useMemo(
+    () => wachtend.map((f) => ({ bestand: f, url: URL.createObjectURL(f) })),
+    [wachtend],
+  )
+  useEffect(
+    () => () => {
+      for (const v of voorbeelden) URL.revokeObjectURL(v.url)
+    },
+    [voorbeelden],
+  )
+
   async function toevoegen(bestanden: File[]) {
     const fotos = bestanden.filter((b) => b.type.startsWith('image/'))
-    if (fotos.length === 0 || !gebruikerId) return
+    if (fotos.length === 0) return
     setFout(null)
+
+    if (!taakId) {
+      opWachtend((huidig) => [...huidig, ...fotos])
+      return
+    }
+    if (!gebruikerId) return
     setBezig((n) => n + fotos.length)
 
     // Een voor een: bij een foutje blijft wat wel gelukt is gewoon staan.
     for (const foto of fotos) {
       try {
-        const blob = await verkleinAfbeelding(foto)
-        const pad = `${gebruikerId}/${taakId}/${crypto.randomUUID()}.jpg`
-        const { error: uploadFout } = await supabase.storage
-          .from(BUCKET)
-          .upload(pad, blob, { contentType: 'image/jpeg' })
-        if (uploadFout) throw new Error(uploadFout.message)
-
-        const { data, error } = await supabase
-          .from('task_attachments')
-          .insert({ task_id: taakId, path: pad, name: foto.name.slice(0, 200) || null })
-          .select()
-          .single()
-        if (error) {
-          // Geen rij, dus het bestand zou voor altijd zwevend blijven.
-          await supabase.storage.from(BUCKET).remove([pad])
-          throw new Error(error.message)
-        }
-        const nieuweLinks = await linksVoor([data])
+        const rij = await uploadAfbeelding(foto, taakId, gebruikerId)
+        const nieuweLinks = await linksVoor([rij])
         setLinks((huidig) => ({ ...huidig, ...nieuweLinks }))
-        setBijlagen((huidig) => [...huidig, data])
+        setBijlagen((huidig) => [...huidig, rij])
+        void omslagenVernieuwen()
       } catch (e) {
         setFout(
           e instanceof Error && !(e instanceof DOMException)
@@ -103,7 +129,8 @@ export function Afbeeldingen({ taakId }: { taakId: string }) {
       setFout(leesbaar(error.message))
       return
     }
-    await supabase.storage.from(BUCKET).remove([bijlage.path])
+    await supabase.storage.from(BUCKET).remove([bijlage.path, miniatuurPad(bijlage.path)])
+    void omslagenVernieuwen()
   }
 
   // Een foto of screenshot uit het klembord plakken, zolang het taakvenster
@@ -129,35 +156,54 @@ export function Afbeeldingen({ taakId }: { taakId: string }) {
     void toevoegen(bestanden)
   }
 
+  const items: Item[] = [
+    ...(laden ? [] : bijlagen).map((b) => ({
+      sleutel: b.id,
+      naam: b.name ?? '',
+      klein: links[b.id]?.klein,
+      groot: links[b.id]?.groot,
+      weg: () => void verwijderen(b),
+    })),
+    ...voorbeelden.map((v, i) => ({
+      sleutel: `wacht-${i}`,
+      naam: v.bestand.name,
+      klein: v.url,
+      groot: v.url,
+      weg: () => {
+        setGroot(null)
+        opWachtend((huidig) => huidig.filter((_, j) => j !== i))
+      },
+    })),
+  ]
+  const uitgelicht = items.find((i) => i.sleutel === groot)
+
   return (
     <div className="mt-4 border-t border-line pt-3">
       <p className="mb-2 text-xs font-medium text-ink-soft">
-        Afbeeldingen{' '}
-        {bijlagen.length > 0 && <span className="text-ink-faint">{bijlagen.length}</span>}
+        Afbeeldingen {items.length > 0 && <span className="text-ink-faint">{items.length}</span>}
       </p>
 
       {fout && <p className="mb-2 text-xs text-danger">{fout}</p>}
 
       <div className="flex flex-wrap gap-2">
-        {!laden &&
-          bijlagen.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              onClick={() => setGroot(b)}
-              aria-label={`Afbeelding vergroten${b.name ? `: ${b.name}` : ''}`}
-              className="size-20 shrink-0 overflow-hidden rounded-lg border border-line bg-surface-muted transition hover:border-brand sm:size-24"
-            >
-              {links[b.id] && (
-                <img
-                  src={links[b.id]}
-                  alt={b.name ?? ''}
-                  loading="lazy"
-                  className="size-full object-cover"
-                />
-              )}
-            </button>
-          ))}
+        {items.map((item) => (
+          <button
+            key={item.sleutel}
+            type="button"
+            onClick={() => setGroot(item.sleutel)}
+            aria-label={`Afbeelding vergroten${item.naam ? `: ${item.naam}` : ''}`}
+            className="size-20 shrink-0 overflow-hidden rounded-lg border border-line bg-surface-muted transition hover:border-brand sm:size-24"
+          >
+            {item.klein && (
+              <img
+                src={item.klein}
+                alt={item.naam}
+                loading="lazy"
+                className="size-full object-cover"
+              />
+            )}
+          </button>
+        ))}
 
         {Array.from({ length: bezig }, (_, i) => (
           <div
@@ -194,12 +240,12 @@ export function Afbeeldingen({ taakId }: { taakId: string }) {
         className="hidden"
       />
 
-      {groot && (
+      {uitgelicht && (
         <Vergroting
-          bijlage={groot}
-          link={links[groot.id]}
+          naam={uitgelicht.naam}
+          link={uitgelicht.groot}
           opSluiten={() => setGroot(null)}
-          opVerwijderen={() => void verwijderen(groot)}
+          opVerwijderen={uitgelicht.weg}
         />
       )}
     </div>
@@ -207,12 +253,12 @@ export function Afbeeldingen({ taakId }: { taakId: string }) {
 }
 
 function Vergroting({
-  bijlage,
+  naam,
   link,
   opSluiten,
   opVerwijderen,
 }: {
-  bijlage: TaskAttachment
+  naam: string
   link: string | undefined
   opSluiten: () => void
   opVerwijderen: () => void
@@ -254,7 +300,7 @@ function Vergroting({
         {link && (
           <img
             src={link}
-            alt={bijlage.name ?? ''}
+            alt={naam}
             className="pointer-events-auto max-h-full max-w-full rounded-lg object-contain"
           />
         )}
@@ -263,20 +309,18 @@ function Vergroting({
   )
 }
 
-/** Tijdelijke leeslinks voor een handvol bijlagen, in één verzoek. */
-async function linksVoor(rijen: TaskAttachment[]): Promise<Record<string, string>> {
-  if (rijen.length === 0) return {}
-  const { data } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrls(
-      rijen.map((r) => r.path),
-      LINK_GELDIG,
-    )
-  const perPad = new Map((data ?? []).map((d) => [d.path, d.signedUrl]))
-  const uit: Record<string, string> = {}
+/** Tijdelijke leeslinks voor een handvol bijlagen: het kleine plaatje voor in
+ *  het raster en het grote voor het vergroten. */
+async function linksVoor(rijen: TaskAttachment[]): Promise<Links> {
+  const perPad = await leeslinks(
+    rijen.flatMap((r) => [r.path, miniatuurPad(r.path)]),
+    LINK_GELDIG,
+  )
+  const uit: Links = {}
   for (const r of rijen) {
-    const url = perPad.get(r.path)
-    if (url) uit[r.id] = url
+    const groot = perPad.get(r.path)
+    // Van voor de miniaturen bestaat alleen het grote plaatje.
+    if (groot) uit[r.id] = { groot, klein: perPad.get(miniatuurPad(r.path)) ?? groot }
   }
   return uit
 }

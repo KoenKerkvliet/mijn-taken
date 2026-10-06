@@ -37,10 +37,13 @@ dashboard; de startpagina is alleen een inlogscherm.
   agenda): daar staat *Verwijderen* linksonder, altijd met een vraag ervoor.
 - **Afbeeldingen** - in het taakvenster, onder de opmerkingen, voeg je foto's
   toe: kiezen uit je bibliotheek, op een telefoon direct de camera, of een
-  screenshot plakken met Ctrl+V. Ze worden in de browser verkleind (langste
-  zijde 1600 pixels) en komen in een privé-map in Supabase Storage; alleen jij
-  kunt erbij. Tik op een afbeelding om hem te vergroten of te verwijderen. Net
-  als subtaken kan het pas bij een taak die al bestaat.
+  screenshot plakken met Ctrl+V. Dat kan ook al bij een nieuwe taak; de foto's
+  gaan dan mee zodra je hem toevoegt. Ze worden in de browser verkleind
+  (langste zijde 1600 pixels, plus een klein plaatje van 480 voor op het bord)
+  en komen in een privé-map in Supabase Storage; alleen jij kunt erbij. Tik in
+  het taakvenster op een afbeelding om hem te vergroten of te verwijderen. Op
+  het bord staat de eerste afbeelding van een taak bovenaan de kaart, zoals bij
+  Trello.
 - **Duur** - typ `5m`, `30m`, `1u` of `1u30m` en de taak krijgt een
   inschatting van hoe lang hij duurt. Op Vandaag staat bovenaan opgeteld
   hoeveel werk er nog openstaat.
