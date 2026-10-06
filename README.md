@@ -35,6 +35,12 @@ dashboard; de startpagina is alleen een inlogscherm.
   subtaken, labels en herhaling. Verwijderen kan met het kruisje achter een
   taak in de lijst, of vanuit het taakvenster (ook op het bord en in de
   agenda): daar staat *Verwijderen* linksonder, altijd met een vraag ervoor.
+- **Afbeeldingen** - in het taakvenster, onder de opmerkingen, voeg je foto's
+  toe: kiezen uit je bibliotheek, op een telefoon direct de camera, of een
+  screenshot plakken met Ctrl+V. Ze worden in de browser verkleind (langste
+  zijde 1600 pixels) en komen in een privé-map in Supabase Storage; alleen jij
+  kunt erbij. Tik op een afbeelding om hem te vergroten of te verwijderen. Net
+  als subtaken kan het pas bij een taak die al bestaat.
 - **Duur** - typ `5m`, `30m`, `1u` of `1u30m` en de taak krijgt een
   inschatting van hoe lang hij duurt. Op Vandaag staat bovenaan opgeteld
   hoeveel werk er nog openstaat.
@@ -296,7 +302,8 @@ draaien.
    `0002_archiveren.sql` maakt het archiveren van lijsten mogelijk en
    `0003_herhalen.sql` de herhalende taken, `0004_duur.sql` de geschatte
    duur en `0005_herinneringen_opmerkingen_locatie.sql` herinneringen,
-   locaties en opmerkingen. Zolang een migratie niet gedraaid
+   locaties en opmerkingen, en `0006_afbeeldingen.sql` de afbeeldingen bij
+   taken (inclusief de opslagmap). Zolang een migratie niet gedraaid
    is werkt de rest van de app gewoon, en zegt alleen dat ene onderdeel dat
    het nog niet kan.
 3. **Registratie uitzetten**: Authentication -> Sign In / Providers ->

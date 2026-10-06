@@ -56,6 +56,16 @@ export type TaskComment = {
   created_at: string
 }
 
+export type TaskAttachment = {
+  id: string
+  task_id: string
+  user_id: string
+  /** Waar het bestand in Storage ligt: <user_id>/<task_id>/<bestand>. */
+  path: string
+  name: string | null
+  created_at: string
+}
+
 /** Taak zoals de UI hem gebruikt: met zijn labels en subtaken erbij. */
 export type TaskWithMeta = Task & {
   labelIds: string[]
@@ -110,6 +120,12 @@ export interface Database {
         Row: TaskComment
         Insert: Partial<TaskComment> & { task_id: string; body: string }
         Update: Partial<TaskComment>
+        Relationships: []
+      }
+      task_attachments: {
+        Row: TaskAttachment
+        Insert: Partial<TaskAttachment> & { task_id: string; path: string }
+        Update: Partial<TaskAttachment>
         Relationships: []
       }
     }

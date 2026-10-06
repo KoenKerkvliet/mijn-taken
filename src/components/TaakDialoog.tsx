@@ -18,6 +18,7 @@ import { Titelveld } from './Titelveld'
 import { gebruikZichtbaarVenster } from '../lib/scherm'
 import { kaartLink, Vinkje } from './TaakRegel'
 import { Opmerkingen } from './Opmerkingen'
+import { Afbeeldingen } from './Afbeeldingen'
 import { leesDuur, toonDuur } from '../lib/duur'
 
 /** 16px op mobiel, want onder die grens zoomt Safari bij het focussen in. */
@@ -594,6 +595,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
 
             {/* Net als subtaken: alleen bij een taak die al bestaat. */}
             {actueel && <Opmerkingen taakId={actueel.id} />}
+            {actueel && <Afbeeldingen taakId={actueel.id} />}
           </div>
         </div>
 

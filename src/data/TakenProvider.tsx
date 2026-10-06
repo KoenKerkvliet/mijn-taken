@@ -7,6 +7,7 @@ import { leesCache, schrijfCache, wisCache } from '../lib/cache'
 import { verplaats } from '../lib/volgorde'
 import { leesHerhaling, volgendeDatum } from '../lib/herhaling'
 import { vierAf } from '../lib/feedback'
+import { ruimAfbeeldingenOp } from '../lib/afbeeldingen'
 import { parseISODate, vandaag } from '../lib/dates'
 
 interface TakenState {
@@ -348,6 +349,8 @@ export function TakenProvider({ children }: { children: ReactNode }) {
   )
 
   const taakVerwijderen = useCallback<TakenState['taakVerwijderen']>(async (id) => {
+    // De database ruimt de rijen op, maar de bestanden in Storage niet.
+    await ruimAfbeeldingenOp(id)
     const { error } = await supabase.from('tasks').delete().eq('id', id)
     if (error) {
       setFout(error.message)
