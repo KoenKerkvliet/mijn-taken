@@ -17,7 +17,8 @@ dashboard; de startpagina is alleen een inlogscherm.
   moet er deze week gebeuren, wat volgende week, en wat heeft nog geen dag. Met
   knopjes bovenaan filter je op lijst en label; die keuze blijft staan tot je
   hem wist.
-- **Agenda** - al je taken in een maandoverzicht, uit alle lijsten samen.
+- **Agenda** - al je taken in een maandoverzicht, uit alle lijsten samen. Staat
+  niet meer in de zijbalk, maar `/agenda` werkt nog.
 - **Binnenkort** - de komende zeven dagen, dag voor dag. Staat niet meer in de
   zijbalk, maar `/binnenkort` werkt nog voor wie er een bladwijzer van had.
 - **Zoeken** - door titels, omschrijvingen, subtaken, lijstnamen en labels.

@@ -170,7 +170,6 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
               groot={alsPagina}
             />
             <Item to="/planning" label="Planning" icoon="🗂️" aantal={aantalOpen} groot={alsPagina} />
-            <Item to="/agenda" label="Agenda" icoon="🗓️" groot={alsPagina} />
             <Item to="/klaar" label="Afgerond" icoon="✅" groot={alsPagina} />
           </ul>
 
