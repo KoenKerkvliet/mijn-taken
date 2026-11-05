@@ -11,7 +11,8 @@ dashboard; de startpagina is alleen een inlogscherm.
 
 - **Vandaag** - achterstallige taken, wat vandaag afloopt, en cijfers over open,
   achterstallig en afgerond werk (inclusief een weekgrafiek). Staat er iets te
-  laat, dan zet **Herplannen** de hele stapel in een keer op vandaag.
+  laat, dan zet **Herplannen** de hele stapel in een keer op vandaag. Staat
+  niet meer in de zijbalk, maar is nog wel de startpagina en werkt op `/`.
 - **Planning** - alles wat openstaat, uit alle lijsten door elkaar, op een
   bord. Waar een lijstpagina per lijst kijkt, kijkt deze pagina per moment: wat
   moet er deze week gebeuren, wat volgende week, en wat heeft nog geen dag. Met

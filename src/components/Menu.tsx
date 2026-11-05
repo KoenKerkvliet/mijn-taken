@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { useTaken } from '../data/TakenProvider'
-import { isAchterstallig, vandaag } from '../lib/dates'
 import { volgendeKleur } from '../lib/kleuren'
 import type { Label, List } from '../lib/types'
 import { Lijstmenu } from './Lijstmenu'
@@ -34,11 +33,7 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
   const [bewerken, setBewerken] = useState<{ lijst?: List; label?: Label } | null>(null)
 
   const open_taken = taken.filter((t) => !t.completed_at)
-  const aantalVandaag = open_taken.filter(
-    (t) => t.due_date !== null && t.due_date <= vandaag(),
-  ).length
   const aantalOpen = open_taken.length
-  const aantalTeLaat = open_taken.filter((t) => isAchterstallig(t.due_date)).length
 
   const email = session?.user.email ?? ''
   // Twee letters: van een naam met een spatie de beginletters, anders de
@@ -161,14 +156,6 @@ export function Menu({ opNieuweTaak, alsPagina }: Props) {
         <nav className={`flex-1 overflow-y-auto px-3 ${alsPagina ? 'pb-24' : 'pb-6'}`}>
           <ul className="space-y-0.5">
             {!alsPagina && <Item to="/zoeken" label="Zoeken" icoon="🔍" />}
-            <Item
-              to="/"
-              label="Vandaag"
-              icoon="☀️"
-              aantal={aantalVandaag}
-              nadruk={aantalTeLaat > 0}
-              groot={alsPagina}
-            />
             <Item to="/planning" label="Planning" icoon="🗂️" aantal={aantalOpen} groot={alsPagina} />
             <Item to="/klaar" label="Afgerond" icoon="✅" groot={alsPagina} />
           </ul>
