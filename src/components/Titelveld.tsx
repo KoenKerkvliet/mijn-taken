@@ -7,6 +7,7 @@ interface Props {
   /** Wat er herkend is: die stukken krijgen een kleurtje.  */
   stukken: Stuk[]
   placeholder?: string
+  autoFocus?: boolean
 }
 
 /** Het titelveld met een gekleurde markering over wat er herkend is: een
@@ -16,7 +17,7 @@ interface Props {
  *  onder met dezelfde tekst - onzichtbaar, alleen de vlakjes erachter zijn te
  *  zien. Dat scheelt een contenteditable: knippen, plakken, ongedaan maken en
  *  de cursor blijven gewoon van de browser. */
-export function Titelveld({ waarde, opWijzigen, stukken, placeholder }: Props) {
+export function Titelveld({ waarde, opWijzigen, stukken, placeholder, autoFocus = true }: Props) {
   const spiegel = useRef<HTMLDivElement>(null)
   const veld = useRef<HTMLInputElement>(null)
 
@@ -40,7 +41,11 @@ export function Titelveld({ waarde, opWijzigen, stukken, placeholder }: Props) {
 
       <input
         ref={veld}
-        autoFocus
+        autoFocus={autoFocus}
+        // Anders biedt iOS boven het toetsenbord "Vul contact automatisch in"
+        // aan, en dat is hier nooit de bedoeling.
+        autoComplete="off"
+        enterKeyHint="done"
         value={waarde}
         onChange={(e) => opWijzigen(e.target.value)}
         onScroll={(e) => {

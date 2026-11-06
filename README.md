@@ -182,10 +182,17 @@ als `school.nl/aanmelden` blijft heel.
   op slot. Onder het titelveld zie je live wat er opgeslagen gaat worden.
 - Een `#` midden in een woord telt niet mee, dus `C#-cursus` blijft heel.
 
-Het taakvenster hangt op een telefoon aan het zichtbare deel van het scherm
-(`visualViewport`) en niet aan het scherm zelf. Schuift het toetsenbord
-omhoog, dan schuift het venster mee; `100dvh` helpt daar niet, want dat blijft
-het hele scherm - ook het stuk dat onder het toetsenbord zit.
+Op een telefoon is het taakvenster een volledig scherm, zoals in een native
+app: bovenaan staan **Annuleren** en **Opslaan**, daaronder scrolt alleen de
+inhoud, en **Taak verwijderen** staat onderaan. Het toetsenbord springt bij
+een bestaande taak niet meer vanzelf open; je leest eerst en tikt dan wat je
+wilt wijzigen. De pagina eronder staat stil zolang het scherm open is.
+
+Het scherm hangt aan het zichtbare deel van het scherm (`visualViewport`) en
+niet aan het scherm zelf. Schuift het toetsenbord omhoog, dan krimpt het
+scherm mee; `100dvh` helpt daar niet, want dat blijft het hele scherm - ook
+het stuk dat onder het toetsenbord zit. Vanaf tabletbreedte is het gewoon
+weer een venster midden op de pagina.
 
 ## Als connector in Claude
 

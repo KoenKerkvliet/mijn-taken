@@ -68,6 +68,10 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
   const [meerOpen, setMeerOpen] = useState(false)
   const omschrijvingVeld = useRef<HTMLTextAreaElement>(null)
   const venster = gebruikZichtbaarVenster()
+  // Op een telefoon wil je een bestaande taak eerst lezen en pas dan aantikken
+  // wat je wilt wijzigen. Springt meteen het toetsenbord open, dan bedekt dat
+  // de helft van de taak nog voordat je hem gezien hebt.
+  const aanraking = window.matchMedia('(pointer: coarse)').matches
 
   // De taak komt als momentopname binnen. Voor de subtaken kijken we naar de
   // actuele versie, anders staat een net toegevoegde subtaak er niet bij.
@@ -126,6 +130,34 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
     window.addEventListener('keydown', opToets)
     return () => window.removeEventListener('keydown', opToets)
   }, [open, opSluiten])
+
+  // Zolang het venster open staat hoort de pagina eronder stil te staan. Op
+  // een iPhone negeert Safari `overflow: hidden` op de body, en dan scrolt je
+  // bij elke veeg in het venster de pagina erachter mee (en schuift die weg
+  // zodra het toetsenbord opent). De body vastzetten op zijn plek lost beide
+  // op; de scrollstand zetten we daarna terug.
+  useEffect(() => {
+    if (!open) return
+    const body = document.body
+    const y = window.scrollY
+    const eerder = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+    }
+    body.style.position = 'fixed'
+    body.style.top = `-${y}px`
+    body.style.left = '0'
+    body.style.right = '0'
+    return () => {
+      body.style.position = eerder.position
+      body.style.top = eerder.top
+      body.style.left = eerder.left
+      body.style.right = eerder.right
+      window.scrollTo(0, y)
+    }
+  }, [open])
 
   if (!open) return null
 
@@ -262,26 +294,56 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
 
   const kanOpslaan = gelezen.titel.trim().length > 0 && !bezig && (duurVast || !duurFout)
 
+  // Een taak openen op een telefoon werkt als een scherm in een native app:
+  // het beslaat alles, bovenaan staan Annuleren en Opslaan, en alleen het
+  // stuk daaronder scrolt. Het toetsenbord neemt dan onderaan ruimte in, maar
+  // de titel en de knoppen blijven op hun plek. Vanaf `sm` (tablet, computer)
+  // is het nog steeds een venster midden op de pagina.
   return (
     // Vastgezet op wat er van het scherm te zien is in plaats van op het hele
-    // scherm: schuift het toetsenbord omhoog, dan schuift dit venster mee en
-    // blijft het titelveld zichtbaar in plaats van eronder te verdwijnen.
+    // scherm: schuift het toetsenbord omhoog, dan krimpt dit scherm mee.
     <div
       style={{ top: venster.top, height: venster.hoogte }}
-      className="fixed inset-x-0 z-40 flex items-end justify-center overflow-y-auto bg-black/40 sm:items-start sm:p-4 sm:pt-[10vh]"
+      className="fixed inset-x-0 z-40 flex justify-center overscroll-contain bg-surface sm:items-start sm:overflow-y-auto sm:bg-black/40 sm:p-4 sm:pt-[10vh]"
     >
-      <button aria-label="Sluiten" className="fixed inset-0 -z-10" onClick={opSluiten} />
+      <button
+        type="button"
+        aria-label="Sluiten"
+        className="fixed inset-0 -z-10 hidden sm:block"
+        onClick={opSluiten}
+      />
 
       <form
         onSubmit={opslaan}
-        className="max-h-full w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface shadow-2xl sm:max-h-[92%] sm:rounded-2xl"
+        className="flex h-full w-full max-w-2xl flex-col overflow-hidden bg-surface sm:h-auto sm:max-h-[92%] sm:rounded-2xl sm:border sm:border-line sm:shadow-2xl"
       >
-        <div className="p-5">
+        <div className="flex shrink-0 touch-none items-center gap-2 border-b border-line px-2 pt-[env(safe-area-inset-top)] sm:hidden">
+          <button
+            type="button"
+            onClick={opSluiten}
+            className="rounded-lg px-3 py-3.5 text-base text-ink-soft active:bg-surface-muted"
+          >
+            Annuleren
+          </button>
+          <span className="flex-1 truncate text-center text-base font-semibold">
+            {taak ? 'Taak' : 'Nieuwe taak'}
+          </span>
+          <button
+            type="submit"
+            disabled={!kanOpslaan}
+            className="rounded-lg px-3 py-3.5 text-base font-semibold text-brand active:bg-brand-soft disabled:opacity-40"
+          >
+            {bezig ? 'Bezig…' : 'Opslaan'}
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 [-webkit-overflow-scrolling:touch]">
           <Titelveld
             waarde={titel}
             opWijzigen={setTitel}
             stukken={gelezen.stukken}
             placeholder="Wat moet er gebeuren? Bijv. Nakijken vrijdag p2 /klas"
+            autoFocus={!taak || !aanraking}
           />
           <textarea
             ref={omschrijvingVeld}
@@ -289,7 +351,7 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
             onChange={(e) => setOmschrijving(e.target.value)}
             placeholder="Omschrijving (optioneel)"
             rows={2}
-            className={`${ingeklapt} mt-2 max-h-[45dvh] w-full resize-none overflow-y-auto bg-transparent text-base leading-relaxed outline-none placeholder:text-ink-faint sm:text-sm`}
+            className={`${ingeklapt} mt-2 w-full resize-none overflow-y-auto bg-transparent text-base leading-relaxed outline-none placeholder:text-ink-faint sm:max-h-[45dvh] sm:text-sm`}
           />
 
           {(uitTitel || gelezen.onbekend.length > 0) && (
@@ -628,15 +690,28 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
               opWachtend={setWachtend}
             />
           </div>
-        </div>
 
-        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-line bg-surface px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
+          {/* Op een telefoon onderaan de inhoud: een rood "Verwijderen" naast
+              Opslaan in de balk is te makkelijk per ongeluk aangetikt. */}
           {taak && (
             <button
               type="button"
               onClick={() => void verwijderen()}
               disabled={bezig}
-              className="mr-auto rounded-lg px-3 py-2.5 text-sm text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50 sm:py-2"
+              className="mt-6 mb-[env(safe-area-inset-bottom)] w-full rounded-xl border border-line py-3 text-base text-danger transition active:bg-danger/10 disabled:opacity-50 sm:hidden"
+            >
+              Taak verwijderen
+            </button>
+          )}
+        </div>
+
+        <div className="hidden shrink-0 items-center justify-end gap-2 border-t border-line bg-surface px-5 py-3 sm:flex">
+          {taak && (
+            <button
+              type="button"
+              onClick={() => void verwijderen()}
+              disabled={bezig}
+              className="mr-auto rounded-lg px-3 py-2 text-sm text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
             >
               Verwijderen
             </button>
@@ -644,14 +719,14 @@ export function TaakDialoog({ open, opSluiten, taak, standaardLijst, standaardDa
           <button
             type="button"
             onClick={opSluiten}
-            className="rounded-lg px-4 py-2.5 text-sm text-ink-soft transition hover:bg-surface-muted sm:py-2"
+            className="rounded-lg px-4 py-2 text-sm text-ink-soft transition hover:bg-surface-muted"
           >
             Annuleren
           </button>
           <button
             type="submit"
             disabled={!kanOpslaan}
-            className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 sm:py-2"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
             {taak ? 'Opslaan' : 'Taak toevoegen'}
           </button>
