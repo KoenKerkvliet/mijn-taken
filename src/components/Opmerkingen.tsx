@@ -41,7 +41,10 @@ export function Opmerkingen({ taakId }: { taakId: string }) {
     const el = veld.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
+    // scrollHeight telt de rand niet mee, en het veld heeft er een. Zonder die
+    // twee pixels is het veld net te laag en wordt de cursor aan de onderkant
+    // afgeknipt.
+    el.style.height = `${el.scrollHeight + (el.offsetHeight - el.clientHeight)}px`
   }, [nieuw])
 
   async function plaatsen() {
@@ -103,7 +106,10 @@ export function Opmerkingen({ taakId }: { taakId: string }) {
         </ul>
       )}
 
-      <div className="flex items-end gap-2">
+      {/* Op een telefoon een ruim veld over de volle breedte met de knop eronder:
+          een regel hoog en de helft ervan voor de knop is te krap om in te
+          typen. Vanaf `sm` weer een compacte regel met de knop ernaast. */}
+      <div className="flex flex-col items-end gap-2 sm:flex-row">
         <textarea
           ref={veld}
           value={nieuw}
@@ -119,14 +125,14 @@ export function Opmerkingen({ taakId }: { taakId: string }) {
           placeholder="Opmerking toevoegen…"
           rows={1}
           maxLength={5000}
-          className="max-h-48 min-w-0 flex-1 resize-none rounded-lg border border-line bg-canvas px-3 py-2 text-base outline-none placeholder:text-ink-faint focus:border-brand sm:text-sm"
+          className="max-h-[40dvh] min-h-28 w-full min-w-0 resize-none rounded-lg border border-line bg-canvas px-3 py-3 text-base leading-relaxed outline-none placeholder:text-ink-faint focus:border-brand sm:max-h-48 sm:min-h-0 sm:flex-1 sm:py-2 sm:text-sm"
         />
         {nieuw.trim() && (
           <button
             type="button"
             onClick={() => void plaatsen()}
             disabled={bezig}
-            className="shrink-0 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+            className="shrink-0 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 sm:px-3 sm:py-2"
           >
             Plaatsen
           </button>
